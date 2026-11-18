@@ -1,0 +1,2 @@
+# _HotkeyApp_managerDatabase
+Пользовательский графический интерфейс для программы ManagerDataBase
