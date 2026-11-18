@@ -1,12 +1,16 @@
 ﻿using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 
 namespace HotkeyApp
 {
     public partial class MainWindow : Window
     {
+        private readonly BackendClient _backend = new();
+
         [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
@@ -95,6 +99,37 @@ namespace HotkeyApp
                 MyTextBox.Focus();
                 MyTextBox.SelectAll();
             }));
+        }
+
+        /// <summary>
+        /// По нажатию Enter в текстовом поле отправляем введённые ДСЕ (через '$')
+        /// на Python-бэкенд ManagerDataBase (POST http://127.0.0.1:8000/run).
+        /// </summary>
+        private async void MyTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key != System.Windows.Input.Key.Enter) return;
+
+            var dseList = MyTextBox.Text
+                .Split(new[] { '$', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => s.Length > 0)
+                .ToList();
+
+            if (dseList.Count == 0) return;
+
+            try
+            {
+                // TODO: выбор отчёта (1010/2012) можно вынести в интерфейс
+                var result = await _backend.RunAsync(program: 1010, dse: dseList);
+                MessageBox.Show($"Готово: обработано {result.Processed} ДСЕ (отчёт {result.Program}).",
+                                "ManagerDataBase", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось выполнить запрос к бэкенду:\n{ex.Message}\n\n" +
+                                "Убедитесь, что Python-сервис запущен (см. backend/README.md).",
+                                "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private void Window_Deactivated(object sender, EventArgs e)
