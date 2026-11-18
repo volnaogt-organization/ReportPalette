@@ -1,0 +1,26 @@
+﻿<Window x:Class="HotkeyApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Мое Окно"
+        Height="250"
+        Width="400"
+        WindowStartupLocation="CenterScreen"
+        Background="White"
+        Deactivated="Window_Deactivated">
+    <Grid>
+        <TextBlock Text="Нажмите Ctrl + Shift + Space"
+                   VerticalAlignment="Top"
+                   HorizontalAlignment="Center"
+                   Margin="0,40,0,0"
+                   FontSize="14"
+                   Foreground="Gray"/>
+
+        <TextBox x:Name="MyTextBox"
+                 Text="Введите текст здесь..."
+                 VerticalAlignment="Center"
+                 HorizontalAlignment="Center"
+                 Width="280"
+                 Height="30"
+                 Padding="5"/>
+    </Grid>
+</Window>
