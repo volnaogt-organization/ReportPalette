@@ -21,6 +21,7 @@
                  HorizontalAlignment="Center"
                  Width="280"
                  Height="30"
-                 Padding="5"/>
+                 Padding="5"
+                 KeyDown="MyTextBox_KeyDown"/>
     </Grid>
 </Window>
