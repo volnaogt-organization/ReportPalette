@@ -1,2 +1,3 @@
-# _HotkeyApp_managerDatabase
+ReportPalette
+
 Пользовательский графический интерфейс для программы ManagerDataBase
