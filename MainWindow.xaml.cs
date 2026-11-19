@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using Microsoft.Win32;
 
 namespace HotkeyApp
@@ -484,7 +485,7 @@ namespace HotkeyApp
             tb.SelectAll();
 
             var result = win.ShowDialog();
-            return result == true ? tb.Text : null;
+            return result == true ? tb.Text.Trim() : string.Empty;
         }
     }
 }
