@@ -225,8 +225,24 @@ namespace HotkeyApp
             _lastActivateTime = DateTime.Now;
 
             this.ShowInTaskbar = true;
-            this.Visibility = Visibility.Visible;
+
+            // Если окно ещё ни разу не показывалось (стартовало скрытым) —
+            // обязателен Show(): Activate() до первого вывода окна на экран
+            // бросает InvalidOperationException.
+            if (!IsVisible)
+            {
+                Show();
+            }
+            else
+            {
+                this.Visibility = Visibility.Visible;
+            }
+
             this.WindowState = WindowState.Normal;
+
+            // Кратковременный Topmost — гарантированно выводит окно на передний план
+            this.Topmost = true;
+            this.Topmost = _settings.Topmost;
 
             this.Activate();
 
