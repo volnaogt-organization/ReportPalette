@@ -36,3 +36,23 @@ C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net
 C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.pdb
 C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.genruntimeconfig.cache
 C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\ref\HotkeyApp.dll
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\MainWindow.baml
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\MainWindow.g.cs
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\App.g.cs
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp_MarkupCompile.cache
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.g.resources
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.GeneratedMSBuildEditorConfig.editorconfig
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.AssemblyInfoInputs.cache
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.AssemblyInfo.cs
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.csproj.CoreCompileInputs.cache
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.sourcelink.json
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.dll
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\refint\HotkeyApp.dll
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.pdb
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.exe
+C:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.deps.json
+C:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.runtimeconfig.json
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.dll
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.pdb
+C:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.genruntimeconfig.cache
+C:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\ref\HotkeyApp.dll

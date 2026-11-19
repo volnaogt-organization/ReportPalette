@@ -44,7 +44,7 @@ namespace HotkeyApp {
         /// InitializeComponent
         /// </summary>
         [System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.14.0")]
+        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.15.0")]
         public void InitializeComponent() {
             
             #line 5 "..\..\..\App.xaml"
@@ -59,7 +59,7 @@ namespace HotkeyApp {
         /// </summary>
         [System.STAThreadAttribute()]
         [System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.14.0")]
+        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.15.0")]
         public static void Main() {
             HotkeyApp.App app = new HotkeyApp.App();
             app.InitializeComponent();

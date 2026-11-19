@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -34,7 +34,6 @@ namespace HotkeyApp
         private HwndSource _source;
         private DateTime _lastActivateTime = DateTime.MinValue;
 
-        // Команды для выпадающего списка (как PowerToys Command Palette)
         private static readonly (string Title, string Text)[] BuiltInCommands =
         {
             ("Отчёт 1010: введите ДСЕ через $", ""),
@@ -53,15 +52,101 @@ namespace HotkeyApp
             _source = HwndSource.FromHwnd(handle);
             _source.AddHook(HwndHook);
 
-            RegisterConfiguredHotkey(handle);
+            if (!RegisterConfiguredHotkeyWithResult(handle))
+            {
+                MessageBox.Show(
+                    $"Не удалось зарегистрировать хоткей " +
+                    $"{_settings.HotkeyModifiers}+{_settings.HotkeyKey}.\n" +
+                    "Возможно, комбинация занята. Выберите другую в поле «Хоткей».",
+                    "Хоткей", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
 
             ApplyWindowMode();
 
             this.Visibility = Visibility.Hidden;
             this.ShowInTaskbar = false;
         }
+        private void HotkeyBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            e.Handled = true; // блокируем обычный ввод текста в TextBox
 
-        // ---------------- Хоткей из конфига ----------------
+            // Игнорируем нажатие только модификаторов (без основной клавиши)
+            var mods = Keyboard.Modifiers;
+            if (mods == ModifierKeys.None) return;
+
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+            // Игнорируем сами модификаторы
+            if (key == Key.LeftCtrl || key == Key.RightCtrl ||
+                key == Key.LeftAlt  || key == Key.RightAlt  ||
+                key == Key.LeftShift|| key == Key.RightShift||
+                key == Key.LWin    || key == Key.RWin)
+                return;
+
+            // Формируем строку модификаторов для конфига
+            var modStr = "";
+            if (mods.HasFlag(ModifierKeys.Control)) modStr += "CTRL|";
+            if (mods.HasFlag(ModifierKeys.Alt))     modStr += "ALT|";
+            if (mods.HasFlag(ModifierKeys.Shift))   modStr += "SHIFT|";
+            if (mods.HasFlag(ModifierKeys.Windows)) modStr += "WIN|";
+            modStr = modStr.TrimEnd('|');
+
+            // Сохраняем в настройки
+            _settings.HotkeyModifiers = modStr;
+            _settings.HotkeyKey = key.ToString();
+
+            // Обновляем поле
+            HotkeyBox.Text = $"{modStr}+{key}";
+
+            // Перерегистрируем хоткей
+            var handle = new WindowInteropHelper(this).Handle;
+            UnregisterHotKey(handle, HOTKEY_ID);
+
+            if (RegisterConfiguredHotkeyWithResult(handle))
+            {
+                SaveSettings();
+            }
+            else
+            {
+                MessageBox.Show(
+                    $"Комбинация {modStr}+{key} уже занята другой программой или системой.\n" +
+                    "Выберите другую.",
+                    "Хоткей", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+
+        private bool RegisterConfiguredHotkeyWithResult(IntPtr handle)
+        {
+            UnregisterHotKey(handle, HOTKEY_ID);
+
+            uint mods = 0;
+            foreach (var m in _settings.HotkeyModifiers.Split('|', StringSplitOptions.RemoveEmptyEntries))
+            {
+                switch (m.Trim().ToUpperInvariant())
+                {
+                    case "WIN":   mods |= MOD_WIN;     break;
+                    case "CTRL":  mods |= MOD_CONTROL; break;
+                    case "SHIFT": mods |= MOD_SHIFT;   break;
+                    case "ALT":   mods |= MOD_ALT;     break;
+                }
+            }
+            if (mods == 0) mods = MOD_WIN;
+
+            uint vk = 0x20;
+            if (!Enum.TryParse<Key>(_settings.HotkeyKey, true, out var key))
+            {
+                // неизвестная клавиша — используем Space
+                vk = 0x20;
+            }
+            else
+            {
+                vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+            }
+
+            return RegisterHotKey(handle, HOTKEY_ID, mods, vk);
+        }
+
 
         private void RegisterConfiguredHotkey(IntPtr handle)
         {
@@ -72,26 +157,33 @@ namespace HotkeyApp
             {
                 switch (m.Trim().ToUpperInvariant())
                 {
-                    case "WIN": mods |= MOD_WIN; break;
-                    case "CTRL": mods |= MOD_CONTROL; break;
-                    case "SHIFT": mods |= MOD_SHIFT; break;
-                    case "ALT": mods |= MOD_ALT; break;
+                    case "WIN":   mods |= MOD_WIN;     break;
+                    case "CTRL":  mods |= MOD_CONTROL; break;
+                    case "SHIFT": mods |= MOD_SHIFT;   break;
+                    case "ALT":   mods |= MOD_ALT;     break;
                 }
             }
             if (mods == 0) mods = MOD_WIN;
 
-            uint vk;
-            try { vk = (uint)KeyInterop.VirtualKeyFromKey(
-                        (Key)Enum.Parse(typeof(Key), _settings.HotkeyKey, true)); }
-            catch { vk = 0x20; } // Space
-
-            bool ok = RegisterHotKey(handle, HOTKEY_ID, mods, vk);
-            if (!ok && mods != MOD_WIN)
+            uint vk = 0x20;
+            if (!Enum.TryParse<Key>(_settings.HotkeyKey, true, out var key))
             {
-                // запасной вариант
-                RegisterHotKey(handle, HOTKEY_ID, MOD_WIN, 0x20);
-                MessageBox.Show("Не удалось зарегистрировать хоткей из конфига — включён запасной Win+Space.",
-                                "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show($"Неизвестная клавиша в конфиге: '{_settings.HotkeyKey}'. " +
+                                "Используется Win+Space.", "Хоткей",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else
+            {
+                vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+            }
+
+            if (!RegisterHotKey(handle, HOTKEY_ID, mods, vk))
+            {
+                // Win+Space почти всегда занят системой — фолбэк бесполезен.
+                MessageBox.Show($"Не удалось зарегистрировать хоткей " +
+                                $"{_settings.HotkeyModifiers}+{_settings.HotkeyKey}.\n" +
+                                "Возможно, комбинация занята другим приложением.",
+                                "Хоткей", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -193,6 +285,10 @@ namespace HotkeyApp
 
         private void UpdateCommandPalette()
         {
+            if (MyTextBox == null || CommandsPopup == null || CommandsList == null ||
+                BuiltInCommands == null || _launchItems == null)
+                return;
+
             var query = MyTextBox.Text?.Trim() ?? "";
             if (query.Length == 0 || query.StartsWith("Введите"))
             {

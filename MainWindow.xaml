@@ -40,13 +40,32 @@
             </Popup>
         </Grid>
 
-        <!-- Режим окна: обычный закреплённый / поверх всех окон -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,5">
-            <RadioButton x:Name="NormalModeRadio" Content="Обычное окно" IsChecked="True"
-                         Checked="WindowMode_Changed" Margin="0,0,10,0"/>
-            <RadioButton x:Name="TopmostModeRadio" Content="Поверх всех окон"
-                         Checked="WindowMode_Changed"/>
-        </StackPanel>
+        <!-- Режим окна: обычный закреплённый / поверх всех окон --> 
+        <Grid Grid.Row="1" Margin="0,5,0,5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Первая строка: режимы окна -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                <RadioButton x:Name="NormalModeRadio" Content="Обычное окно" IsChecked="True"
+                             Checked="WindowMode_Changed" Margin="0,0,10,0"/>
+                <RadioButton x:Name="TopmostModeRadio" Content="Поверх всех окон"
+                             Checked="WindowMode_Changed"/>
+            </StackPanel>
+
+            <!-- Вторая строка: настройка хоткея -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal">
+                <TextBlock Text="лллакнХоткей: " VerticalAlignment="Center" FontWeight="Bold"/>
+                <TextBox x:Name="HotkeyBox" Width="150" IsReadOnly="True" 
+                         HorizontalContentAlignment="Center"
+                         PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                         ToolTip="Кликните сюда и нажмите желаемую комбинацию клавиш"/>
+                <TextBlock Text=" (кликните и нажмите клавиши)" 
+                           VerticalAlignment="Center" Foreground="Gray" FontSize="10" Margin="5,0,0,0"/>
+            </StackPanel>
+        </Grid>
 
         <!-- Панель запуска: добавленные приложения + кнопка добавления -->
         <GroupBox Grid.Row="2" Header="Панель запуска" Margin="0,5,0,5">
