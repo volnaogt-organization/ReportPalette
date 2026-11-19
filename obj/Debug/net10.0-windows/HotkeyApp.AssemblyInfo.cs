@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HotkeyApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fb9b359fdcf86c6ceb042e66bba8d02e4dc583e7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dbb8a316090d8e79cd14b9af898a604b2298ee3c")]
 [assembly: System.Reflection.AssemblyProductAttribute("HotkeyApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HotkeyApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

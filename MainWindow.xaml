@@ -1,26 +1,20 @@
 <Window x:Class="HotkeyApp.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Мое Окно"
-        Height="420"
-        Width="460"
+        Title="ReportPalette"
+        Width="480"
+        SizeToContent="Height"
         WindowStartupLocation="CenterScreen"
         Background="White"
         Deactivated="Window_Deactivated">
     <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <!-- строка ввода ДСЕ -->
-            <RowDefinition Height="Auto"/>
-            <!-- режим окна -->
-            <RowDefinition Height="*"/>
-            <!-- панель запуска -->
-            <RowDefinition Height="Auto"/>
-            <!-- перенос настроек -->
-        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
 
-        <!-- Ввод ДСЕ + выпадающий список команд (как PowerToys Command Palette) -->
-        <Grid Grid.Row="0" Margin="0,5,0,5">
+        <!-- Ввод ДСЕ / команд + выпадающий список (как PowerToys Command Palette) -->
+        <Grid Grid.Column="0">
             <TextBox x:Name="MyTextBox"
                      Text="Введите текст здесь..."
                      Height="30" Padding="5"
@@ -40,74 +34,9 @@
             </Popup>
         </Grid>
 
-        <!-- Режим окна: обычный закреплённый / поверх всех окон --> 
-        <Grid Grid.Row="1" Margin="0,5,0,5">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            
-            <!-- Первая строка: режимы окна -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-                <RadioButton x:Name="NormalModeRadio" Content="Обычное окно" IsChecked="True"
-                             Checked="WindowMode_Changed" Margin="0,0,10,0"/>
-                <RadioButton x:Name="TopmostModeRadio" Content="Поверх всех окон"
-                             Checked="WindowMode_Changed"/>
-            </StackPanel>
-
-            <!-- Вторая строка: настройка хоткея -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal">
-                <TextBlock Text="Хоткей: " VerticalAlignment="Center" FontWeight="Bold"/>
-                <TextBox x:Name="HotkeyBox" Width="150" IsReadOnly="True" 
-                         HorizontalContentAlignment="Center"
-                         PreviewKeyDown="HotkeyBox_PreviewKeyDown"
-                         ToolTip="Кликните сюда и нажмите желаемую комбинацию клавиш"/>
-                <TextBlock Text=" (кликните и нажмите клавиши)" 
-                           VerticalAlignment="Center" Foreground="Gray" FontSize="10" Margin="5,0,0,0"/>
-            </StackPanel>
-        </Grid>
-
-        <!-- Панель запуска: добавленные приложения + кнопка добавления -->
-        <GroupBox Grid.Row="2" Header="Панель запуска" Margin="0,5,0,5">
-            <DockPanel>
-                <Button DockPanel.Dock="Bottom" Content="+ Добавить приложение"
-                        Click="AddLaunchItem_Click" Margin="0,5,0,0"/>
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <ItemsControl x:Name="LaunchItemsList">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Button Grid.Column="0" Content="{Binding Name}"
-                                            HorizontalAlignment="Left"
-                                            Click="LaunchItem_Click" Tag="{Binding}"/>
-                                    <Button Grid.Column="1" Content="✕" Width="24"
-                                            Click="RemoveLaunchItem_Click" Tag="{Binding}"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </DockPanel>
-        </GroupBox>
-
-        <!-- Перенос настроек: сгенерировать хеш-строку / вставить и применить -->
-        <Expander Grid.Row="3" Header="Перенос настроек (хеш-строка)" Margin="0,5,0,0">
-            <StackPanel Margin="0,5,0,0">
-                <DockPanel Margin="0,0,0,5">
-                    <Button DockPanel.Dock="Right" Content="Копировать" Click="CopySettings_Click" Margin="5,0,0,0"/>
-                    <Button DockPanel.Dock="Right" Content="Сгенерировать" Click="GenerateSettingsHash_Click"/>
-                    <TextBox x:Name="ExportHashBox" IsReadOnly="True"/>
-                </DockPanel>
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="Применить" Click="ImportSettingsHash_Click" Margin="5,0,0,0"/>
-                    <TextBox x:Name="ImportHashBox"
-                             ToolTip="Вставьте сюда хеш-строку с другой машины"/>
-                </DockPanel>
-            </StackPanel>
-        </Expander>
+        <!-- Кнопка открытия окна настроек -->
+        <Button Grid.Column="1" Content="⚙" Width="32" Height="30"
+                Margin="5,0,0,0" ToolTip="Настройки"
+                Click="SettingsButton_Click"/>
     </Grid>
 </Window>

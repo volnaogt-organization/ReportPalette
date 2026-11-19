@@ -8,23 +8,26 @@
     "net10.0-windows": []
   },
   "packageFolders": {
-    "C:\\Users\\yakovlev_nd\\.nuget\\packages\\": {}
+    "C:\\Users\\truni\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\yakovlev_nd\\PycharmProjects\\_HotkeyApp_managerDatabase\\HotkeyApp.csproj",
+      "projectUniqueName": "C:\\Users\\truni\\gitCode\\ReportPalette\\HotkeyApp.csproj",
       "projectName": "HotkeyApp",
-      "projectPath": "C:\\Users\\yakovlev_nd\\PycharmProjects\\_HotkeyApp_managerDatabase\\HotkeyApp.csproj",
-      "packagesPath": "C:\\Users\\yakovlev_nd\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\yakovlev_nd\\PycharmProjects\\_HotkeyApp_managerDatabase\\obj\\",
+      "projectPath": "C:\\Users\\truni\\gitCode\\ReportPalette\\HotkeyApp.csproj",
+      "packagesPath": "C:\\Users\\truni\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\truni\\gitCode\\ReportPalette\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\yakovlev_nd\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\truni\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0-windows"
       ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
       "frameworks": {
         "net10.0-windows": {
           "framework": "net10.0-windows7.0",
