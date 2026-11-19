@@ -20,8 +20,8 @@ namespace HotkeyApp
     public class AppSettings
     {
         [JsonPropertyName("backendUrl")] public string BackendUrl { get; set; } = "http://127.0.0.1:8000/";
-        [JsonPropertyName("hotkeyModifiers")] public string HotkeyModifiers { get; set; } = "WIN"; // WIN|CTRL|SHIFT|ALT (через |)
-        [JsonPropertyName("hotkeyKey")] public string HotkeyKey { get; set; } = "Space";
+        [JsonPropertyName("hotkeyModifiers")] public string HotkeyModifiers { get; set; } = "CTRL|ALT"; // WIN|CTRL|SHIFT|ALT (через |)
+        [JsonPropertyName("hotkeyKey")] public string HotkeyKey { get; set; } = "Q"; // дефолт: Ctrl+Alt+Q (Win+Space занят Windows)
         [JsonPropertyName("topmost")] public bool Topmost { get; set; } = true;
         [JsonPropertyName("stayOpenOnLostFocus")] public bool StayOpenOnLostFocus { get; set; } = false;
         [JsonPropertyName("defaultProgram")] public int DefaultProgram { get; set; } = 1010;

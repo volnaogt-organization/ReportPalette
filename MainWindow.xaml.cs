@@ -52,19 +52,25 @@ namespace HotkeyApp
             _source = HwndSource.FromHwnd(handle);
             _source.AddHook(HwndHook);
 
-            if (!RegisterConfiguredHotkeyWithResult(handle))
+            bool hotkeyRegistered = RegisterConfiguredHotkeyWithResult(handle);
+            if (!hotkeyRegistered)
             {
                 MessageBox.Show(
                     $"Не удалось зарегистрировать хоткей " +
                     $"{_settings.HotkeyModifiers}+{_settings.HotkeyKey}.\n" +
-                    "Возможно, комбинация занята. Выберите другую в поле «Хоткей».",
+                    "Возможно, комбинация занята. Выберите другую в поле «Хоткей» ниже.",
                     "Хоткей", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
 
             ApplyWindowMode();
 
-            this.Visibility = Visibility.Hidden;
-            this.ShowInTaskbar = false;
+            // Прячем окно в фон только если хоткей зарегистрирован —
+            // иначе пользователь не сможет открыть окно и выбрать другую комбинацию.
+            if (hotkeyRegistered)
+            {
+                this.Visibility = Visibility.Hidden;
+                this.ShowInTaskbar = false;
+            }
         }
         private void HotkeyBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {

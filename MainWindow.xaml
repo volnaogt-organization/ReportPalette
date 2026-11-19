@@ -57,7 +57,7 @@
 
             <!-- Вторая строка: настройка хоткея -->
             <StackPanel Grid.Row="1" Orientation="Horizontal">
-                <TextBlock Text="лллакнХоткей: " VerticalAlignment="Center" FontWeight="Bold"/>
+                <TextBlock Text="Хоткей: " VerticalAlignment="Center" FontWeight="Bold"/>
                 <TextBox x:Name="HotkeyBox" Width="150" IsReadOnly="True" 
                          HorizontalContentAlignment="Center"
                          PreviewKeyDown="HotkeyBox_PreviewKeyDown"
