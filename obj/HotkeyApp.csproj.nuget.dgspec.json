@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\yakovlev_nd\\Desktop\\Архив программ\\HotkeyApp\\HotkeyApp.csproj": {}
+    "C:\\Users\\yakovlev_nd\\PycharmProjects\\_HotkeyApp_managerDatabase\\HotkeyApp.csproj": {}
   },
   "projects": {
-    "C:\\Users\\yakovlev_nd\\Desktop\\Архив программ\\HotkeyApp\\HotkeyApp.csproj": {
+    "C:\\Users\\yakovlev_nd\\PycharmProjects\\_HotkeyApp_managerDatabase\\HotkeyApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\yakovlev_nd\\Desktop\\Архив программ\\HotkeyApp\\HotkeyApp.csproj",
+        "projectUniqueName": "C:\\Users\\yakovlev_nd\\PycharmProjects\\_HotkeyApp_managerDatabase\\HotkeyApp.csproj",
         "projectName": "HotkeyApp",
-        "projectPath": "C:\\Users\\yakovlev_nd\\Desktop\\Архив программ\\HotkeyApp\\HotkeyApp.csproj",
+        "projectPath": "C:\\Users\\yakovlev_nd\\PycharmProjects\\_HotkeyApp_managerDatabase\\HotkeyApp.csproj",
         "packagesPath": "C:\\Users\\yakovlev_nd\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\yakovlev_nd\\Desktop\\Архив программ\\HotkeyApp\\obj\\",
+        "outputPath": "C:\\Users\\yakovlev_nd\\PycharmProjects\\_HotkeyApp_managerDatabase\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\yakovlev_nd\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -61,7 +61,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.403/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.404/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
