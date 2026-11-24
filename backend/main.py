@@ -15,6 +15,7 @@ import threading
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 # --- Подключаем клонированный репозиторий ManagerDataBase как Python-модуль ---
@@ -33,8 +34,17 @@ else:
 
 app = FastAPI(
     title="ManagerDataBase API",
-    description="Обёртка над логикой ManagerDataBase для WPF-клиента HotkeyApp",
+    description="Обёртка над логикой ManagerDataBase для клиентов ReportPalette (WPF и веб)",
     version="0.1.0",
+)
+
+# Веб-фронтенд обычно ходит через nginx-прокси (один origin), но разрешаем
+# прямые запросы — пригодится при разработке и если фронт на другом хосте.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Обработка ДСЕ идёт в одном экземпляре логики; блокировка защищает от параллельных запусков

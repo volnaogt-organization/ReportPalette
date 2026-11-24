@@ -1,0 +1,28 @@
+# ReportPalette: веб-фронтенд + FastAPI-бэкенд в двух контейнерах.
+#
+# Подготовка (один раз): git clone https://github.com/volnaogt-organization/ManagerDataBase backend/ManagerDataBase
+# Запуск:                docker compose up -d --build
+# Открыть:               http://localhost:8080
+
+services:
+  backend:
+    build: ./backend
+    container_name: reportpalette-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"   # прямой доступ к API (Swagger: /docs); можно закомментировать
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+
+  frontend:
+    build: ./frontend
+    container_name: reportpalette-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_started
