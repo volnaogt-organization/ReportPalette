@@ -1,43 +1,34 @@
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\MainWindow.baml
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\MainWindow.g.cs
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\App.g.cs
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp_MarkupCompile.cache
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.g.resources
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.GeneratedMSBuildEditorConfig.editorconfig
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.AssemblyInfoInputs.cache
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.AssemblyInfo.cs
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.csproj.CoreCompileInputs.cache
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\bin\Debug\net10.0-windows\HotkeyApp.exe
-C:\Users\yakovlev_nd\Desktop\HotkeyApp\bin\Debug\net10.0-windows\HotkeyApp.deps.json
-C:\Users\yakovlev_nd\Desktop\HotkeyApp\bin\Debug\net10.0-windows\HotkeyApp.runtimeconfig.json
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\bin\Debug\net10.0-windows\HotkeyApp.dll
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\bin\Debug\net10.0-windows\HotkeyApp.pdb
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.dll
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\refint\HotkeyApp.dll
-c:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.pdb
-C:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.genruntimeconfig.cache
-C:\Users\yakovlev_nd\Desktop\HotkeyApp\obj\Debug\net10.0-windows\ref\HotkeyApp.dll
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\bin\Debug\net10.0-windows\HotkeyApp.exe
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\bin\Debug\net10.0-windows\HotkeyApp.deps.json
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\bin\Debug\net10.0-windows\HotkeyApp.runtimeconfig.json
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\bin\Debug\net10.0-windows\HotkeyApp.dll
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\bin\Debug\net10.0-windows\HotkeyApp.pdb
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\MainWindow.baml
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\MainWindow.g.cs
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\App.g.cs
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp_MarkupCompile.cache
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.g.resources
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.AssemblyInfoInputs.cache
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.AssemblyInfo.cs
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.csproj.CoreCompileInputs.cache
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.dll
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\refint\HotkeyApp.dll
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.pdb
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\HotkeyApp.genruntimeconfig.cache
-C:\Users\yakovlev_nd\Desktop\Архив программ\HotkeyApp\obj\Debug\net10.0-windows\ref\HotkeyApp.dll
+C:\Users\truni\gitCode\ReportPalette\bin\Debug\net10.0-windows\HotkeyApp.exe
+C:\Users\truni\gitCode\ReportPalette\bin\Debug\net10.0-windows\HotkeyApp.deps.json
+C:\Users\truni\gitCode\ReportPalette\bin\Debug\net10.0-windows\HotkeyApp.runtimeconfig.json
+C:\Users\truni\gitCode\ReportPalette\bin\Debug\net10.0-windows\HotkeyApp.dll
+C:\Users\truni\gitCode\ReportPalette\bin\Debug\net10.0-windows\HotkeyApp.pdb
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\MainWindow.baml
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\SettingsWindow.baml
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\MainWindow.g.cs
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\SettingsWindow.g.cs
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\App.g.cs
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\HotkeyApp_MarkupCompile.cache
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\HotkeyApp.g.resources
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\HotkeyApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\HotkeyApp.AssemblyInfoInputs.cache
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\HotkeyApp.AssemblyInfo.cs
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\HotkeyApp.csproj.CoreCompileInputs.cache
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\HotkeyApp.sourcelink.json
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\HotkeyApp.dll
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\refint\HotkeyApp.dll
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\HotkeyApp.pdb
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\HotkeyApp.genruntimeconfig.cache
+C:\Users\truni\gitCode\ReportPalette\obj\Debug\net10.0-windows\ref\HotkeyApp.dll
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.exe
+C:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.deps.json
+C:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.runtimeconfig.json
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.dll
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.pdb
 c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\MainWindow.baml
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\SettingsWindow.baml
 c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\MainWindow.g.cs
+c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\SettingsWindow.g.cs
 c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\App.g.cs
 c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp_MarkupCompile.cache
 c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.g.resources
@@ -49,10 +40,5 @@ c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.
 c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.dll
 c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\refint\HotkeyApp.dll
 c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.pdb
-c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.exe
-C:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.deps.json
-C:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.runtimeconfig.json
-c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.dll
-c:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\bin\Debug\net10.0-windows\HotkeyApp.pdb
 C:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\HotkeyApp.genruntimeconfig.cache
 C:\Users\yakovlev_nd\PycharmProjects\_HotkeyApp_managerDatabase\obj\Debug\net10.0-windows\ref\HotkeyApp.dll
