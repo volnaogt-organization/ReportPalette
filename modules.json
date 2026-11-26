@@ -1,0 +1,11 @@
+{
+  "modules": [
+    {
+      "name": "managerdatabase",
+      "display_name": "ManagerDataBase",
+      "repo": "volnaogt-organization/ManagerDataBase",
+      "port": 8100,
+      "entry": "service.api:app"
+    }
+  ]
+}

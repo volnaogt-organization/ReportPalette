@@ -9,14 +9,35 @@ using Microsoft.Win32;
 
 namespace HotkeyApp
 {
+    /// <summary>Строка списка модулей в окне настроек.</summary>
+    public class ModuleUIRow
+    {
+        public string Name { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Info { get; set; } = "";
+        public bool HasModule => Name.Length > 0;
+
+        public static ModuleUIRow From(ModuleStatus s)
+        {
+            static string V(string? v) => string.IsNullOrEmpty(v) ? "—" : v.TrimStart('v', 'V');
+            var info = $"текущая: {V(s.InstalledVersion)} · релиз: {V(s.LatestVersion)}";
+            if (!s.Running)
+                info += s.InstalledVersion == null ? " · не установлен" : " · остановлен";
+            else if (s.UpdateAvailable)
+                info += " · есть обновление";
+            return new ModuleUIRow { Name = s.Def.Name, Title = s.Def.DisplayName, Info = info };
+        }
+    }
+
     /// <summary>
-    /// Окно настроек: режим палитры, хоткей, панель запуска, перенос настроек.
+    /// Окно настроек: режим палитры, хоткей, панель запуска, модули, перенос настроек.
     /// Открывается из палитры (MainWindow) кнопкой ⚙ или командой «Настройки».
     /// </summary>
     public partial class SettingsWindow : Window
     {
         private AppSettings _settings = SettingsService.Load();
         private readonly ObservableCollection<LaunchItem> _launchItems = new();
+        private readonly ObservableCollection<ModuleUIRow> _moduleRows = new();
 
         /// <summary>Палитра-владелец; через неё перерегистрируем хоткей и применяем режим окна.</summary>
         private MainWindow? Palette => Owner as MainWindow;
@@ -27,10 +48,13 @@ namespace HotkeyApp
 
             _launchItems = new ObservableCollection<LaunchItem>(_settings.LaunchItems);
             LaunchItemsList.ItemsSource = _launchItems;
+            ModuleList.ItemsSource = _moduleRows;
 
             HotkeyBox.Text = $"{_settings.HotkeyModifiers}+{_settings.HotkeyKey}";
             TopmostModeRadio.IsChecked = _settings.Topmost;
             NormalModeRadio.IsChecked = !_settings.Topmost;
+
+            Loaded += async (_, _) => await RefreshModulesAsync();
         }
 
         // ---------------- Режим окна палитры ----------------
@@ -295,6 +319,82 @@ namespace HotkeyApp
 
             if (win.ShowDialog() != true) return null;
             return mergeRadio?.IsChecked == true; // если списков нет — значение не важно
+        }
+
+        // ---------------- Модули ----------------
+
+        private async System.Threading.Tasks.Task RefreshModulesAsync()
+        {
+            _moduleRows.Clear();
+            _moduleRows.Add(new ModuleUIRow { Title = "Модули", Info = "проверка версий и релизов…" });
+            try
+            {
+                var statuses = await ModuleManager.GetStatusAllAsync();
+                _moduleRows.Clear();
+                foreach (var s in statuses)
+                    _moduleRows.Add(ModuleUIRow.From(s));
+                if (statuses.Count == 0)
+                    _moduleRows.Add(new ModuleUIRow { Title = "Модули", Info = "нет модулей в modules.json" });
+            }
+            catch (Exception ex)
+            {
+                _moduleRows.Clear();
+                _moduleRows.Add(new ModuleUIRow { Title = "Модули", Info = "ошибка: " + ex.Message });
+            }
+        }
+
+        private async void RefreshModules_Click(object sender, RoutedEventArgs e) => await RefreshModulesAsync();
+
+        private void UpdateRowInfo(string name, string info)
+        {
+            var row = _moduleRows.FirstOrDefault(r => r.Name == name);
+            if (row == null) return;
+            row.Info = info;
+            ModuleList.Items.Refresh();
+        }
+
+        private async void UpdateModule_Click(object sender, RoutedEventArgs e)
+        {
+            if (((Button)sender).Tag is not string name || name.Length == 0) return;
+
+            ModulesBox.IsEnabled = false;
+            var progress = new Progress<string>(msg => UpdateRowInfo(name, msg));
+            try
+            {
+                var result = await ModuleManager.UpdateAsync(name, progress);
+                MessageBox.Show(result, "Модули", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось обновить модуль:\n{ex.Message}",
+                                "Модули", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                ModulesBox.IsEnabled = true;
+                await RefreshModulesAsync();
+            }
+        }
+
+        private async void UpdateAllModules_Click(object sender, RoutedEventArgs e)
+        {
+            ModulesBox.IsEnabled = false;
+            try
+            {
+                var results = await ModuleManager.UpdateAllAsync();
+                MessageBox.Show(string.Join("\n", results), "Модули",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка обновления:\n{ex.Message}",
+                                "Модули", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                ModulesBox.IsEnabled = true;
+                await RefreshModulesAsync();
+            }
         }
 
         // ---------------- Служебное ----------------

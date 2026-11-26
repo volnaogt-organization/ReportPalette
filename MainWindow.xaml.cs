@@ -18,7 +18,7 @@ namespace HotkeyApp
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly BackendClient _backend = new();
+        private BackendClient? _backend; // создаётся после запуска локального модуля
         private AppSettings _settings = SettingsService.Load();
 
         [DllImport("user32.dll")]
@@ -71,6 +71,32 @@ namespace HotkeyApp
                 this.Visibility = Visibility.Hidden;
                 this.ShowInTaskbar = false;
             }
+
+            // Модули поднимаются в фоне: при первом запуске скачиваются
+            // портабельный Python и последний релиз ManagerDataBase.
+            _ = InitializeModulesAsync();
+        }
+
+        // ---------------- Модули ----------------
+
+        /// <summary>
+        /// Гарантирует, что модуль ManagerDataBase скачан и запущен локально,
+        /// затем подключает к нему клиента. Прогресс и ошибки — в статус-строке.
+        /// </summary>
+        private async Task InitializeModulesAsync()
+        {
+            var progress = new Progress<string>(msg => StatusText.Text = msg);
+            try
+            {
+                await ModuleManager.EnsureStartedAsync("managerdatabase", progress);
+                _backend = new BackendClient(ModuleManager.GetModuleBaseAddress("managerdatabase"));
+                StatusText.Text = "";
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = "Модуль ManagerDataBase не запущен — откройте ⚙ → Модули";
+                Debug.WriteLine("InitializeModulesAsync: " + ex);
+            }
         }
 
         // ---------------- Хоткей ----------------
@@ -112,6 +138,7 @@ namespace HotkeyApp
             UnregisterHotKey(handle, HOTKEY_ID);
             _source?.RemoveHook(HwndHook);
             _settingsWindow?.Close();
+            ModuleManager.StopAll(); // гасим локальные сервисы модулей
             base.OnClosed(e);
         }
 
@@ -351,6 +378,14 @@ namespace HotkeyApp
                 return;
             if (dseList.Count == 0) return;
 
+            if (_backend == null)
+            {
+                MessageBox.Show("Модуль ManagerDataBase ещё запускается или не установлен.\n" +
+                                "Статус — внизу окна палитры; управление — в ⚙ → Модули.",
+                                "Модули", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             try
             {
                 var result = await _backend.RunAsync(program: program, dse: dseList);
@@ -359,8 +394,8 @@ namespace HotkeyApp
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Не удалось выполнить запрос к бэкенду:\n{ex.Message}\n\n" +
-                                "Убедитесь, что Python-сервис запущен (см. backend/README.md).",
+                MessageBox.Show($"Не удалось выполнить запрос к модулю:\n{ex.Message}\n\n" +
+                                "Проверьте состояние модуля в ⚙ → Модули.",
                                 "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
