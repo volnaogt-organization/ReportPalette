@@ -733,6 +733,7 @@ namespace HotkeyApp
                 var json = await client.PostAsync(cmd.Endpoint, cmd.BuildPayload(dseList, filePath));
                 StatusText.Text = $"[{cmd.Title}] {DescribeResult(json)}";
                 MyTextBox.Text = "";
+                UpdateResultButton(cmd.ModuleName);
             }
             catch (Exception ex)
             {
@@ -744,6 +745,39 @@ namespace HotkeyApp
                                     "Модули", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 finally { _modalOpen = false; }
+            }
+        }
+
+        /// <summary>Excel-файл, который модуль пишет в свой рабочий каталог (как cmd_body).</summary>
+        private string? _lastResultFile;
+
+        /// <summary>Показывает кнопку «Открыть результат», если модуль записал Excel-отчёт.</summary>
+        private void UpdateResultButton(string moduleName)
+        {
+            var dir = ModuleManager.GetInstalledAppDir(moduleName);
+            var file = dir == null ? null
+                : System.IO.Path.Combine(dir, "result_manager_database_reports.xlsx");
+            _lastResultFile = file != null && System.IO.File.Exists(file) ? file : null;
+            OpenResultButton.Visibility = _lastResultFile != null
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        private void OpenResultButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_lastResultFile == null) return;
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = _lastResultFile,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось открыть файл:\n{ex.Message}",
+                                "Результат", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 

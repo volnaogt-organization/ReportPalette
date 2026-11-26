@@ -16,6 +16,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -63,6 +64,12 @@
             <TextBlock x:Name="StatusText" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4"
                        FontSize="10" Foreground="Gray" Margin="2,4,0,0"
                        TextWrapping="Wrap"/>
+
+            <!-- Открыть Excel-результат последней выполненной команды -->
+            <Button x:Name="OpenResultButton" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4"
+                    Content="📄 Открыть результат" Height="26" Margin="0,4,0,0"
+                    Visibility="Collapsed"
+                    Click="OpenResultButton_Click"/>
         </Grid>
     </Border>
 </Window>
