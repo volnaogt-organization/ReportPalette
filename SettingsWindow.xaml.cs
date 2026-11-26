@@ -52,7 +52,67 @@ namespace HotkeyApp
 
             HotkeyBox.Text = $"{_settings.HotkeyModifiers}+{_settings.HotkeyKey}";
 
-            Loaded += async (_, _) => await RefreshModulesAsync();
+            Loaded += async (_, _) =>
+            {
+                await RefreshModulesAsync();
+                await RefreshAppUpdateAsync();
+            };
+        }
+
+        // ---------------- Обновление программы ----------------
+
+        private SelfUpdater.ReleaseInfo? _appRelease;
+
+        private async System.Threading.Tasks.Task RefreshAppUpdateAsync()
+        {
+            UpdateAppButton.IsEnabled = false;
+            AppVersionText.Text = $"текущая: {SelfUpdater.CurrentVersion} · проверка релизов…";
+
+            _appRelease = await SelfUpdater.CheckAsync();
+
+            if (_appRelease.Tag == null)
+            {
+                AppVersionText.Text = $"текущая: {SelfUpdater.CurrentVersion} · релиз не найден (нет сети или релизов)";
+            }
+            else
+            {
+                var latest = _appRelease.Tag.TrimStart('v', 'V');
+                AppVersionText.Text = $"текущая: {SelfUpdater.CurrentVersion} · релиз: {latest}" +
+                    (_appRelease.UpdateAvailable ? " · есть обновление"
+                        : _appRelease.AssetUrl == null ? " · в релизе нет zip с программой"
+                        : " · актуально");
+            }
+            UpdateAppButton.IsEnabled = _appRelease.UpdateAvailable;
+        }
+
+        private async void CheckAppUpdate_Click(object sender, RoutedEventArgs e) =>
+            await RefreshAppUpdateAsync();
+
+        private async void UpdateApp_Click(object sender, RoutedEventArgs e)
+        {
+            if (_appRelease == null || !_appRelease.UpdateAvailable) return;
+
+            if (MessageBox.Show(
+                    $"Будет установлена версия {_appRelease.Tag}.\n" +
+                    "Программа закроется, обновится и запустится снова.\n\nПродолжить?",
+                    "Обновление программы", MessageBoxButton.YesNo, MessageBoxImage.Question)
+                != MessageBoxResult.Yes)
+                return;
+
+            AppUpdateBox.IsEnabled = false;
+            var progress = new Progress<string>(msg => AppVersionText.Text = msg);
+            try
+            {
+                // метод завершит приложение — управление сюда обычно не вернётся
+                await SelfUpdater.ApplyAndRestartAsync(_appRelease, progress);
+            }
+            catch (Exception ex)
+            {
+                AppUpdateBox.IsEnabled = true;
+                AppVersionText.Text = "ошибка обновления";
+                MessageBox.Show($"Не удалось обновить программу:\n{ex.Message}",
+                                "Обновление программы", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         // ---------------- Хоткей ----------------
