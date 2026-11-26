@@ -9,6 +9,8 @@
     <!-- WinForms нужен для NotifyIcon (значок в системном трее) -->
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- Версия программы; при сборке релиза CI подставляет версию из тега -->
+    <Version>0.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

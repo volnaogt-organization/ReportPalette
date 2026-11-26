@@ -97,6 +97,28 @@ namespace HotkeyApp
             // Модули поднимаются в фоне: при первом запуске скачиваются
             // портабельный Python и последний релиз ManagerDataBase.
             _ = InitializeModulesAsync();
+
+            // Фоновая проверка обновления самой программы
+            _ = CheckAppUpdateAsync();
+        }
+
+        /// <summary>Если на GitHub есть релиз новее текущего — подсказка в статусе и трее.</summary>
+        private string? _appUpdateHint;
+
+        private async Task CheckAppUpdateAsync()
+        {
+            try
+            {
+                var rel = await SelfUpdater.CheckAsync();
+                if (!rel.UpdateAvailable) return;
+
+                _appUpdateHint = $"Доступно обновление программы {rel.Tag} — ⚙ → Обновление программы";
+                if (StatusText.Text.Length == 0)
+                    StatusText.Text = _appUpdateHint;
+                _tray?.ShowBalloon("ReportPalette",
+                    $"Доступно обновление {rel.Tag}.\nУстановить: ⚙ → Обновление программы.");
+            }
+            catch { /* проверка необязательная — молчим */ }
         }
 
         // ---------------- Модули ----------------
@@ -114,7 +136,7 @@ namespace HotkeyApp
                 _backend = new BackendClient(ModuleManager.GetModuleBaseAddress("managerdatabase"));
                 ReloadModuleCommands();
                 UpdateCommandPalette(); // команды появились — обновить список
-                StatusText.Text = "";
+                StatusText.Text = _appUpdateHint ?? "";
             }
             catch (Exception ex)
             {
