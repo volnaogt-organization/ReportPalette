@@ -365,7 +365,6 @@ namespace HotkeyApp
             }
         }
 
-        // ---------------- Запуск процессов ----------------
 
         public static void LaunchProcess(string path, string arguments)
         {
