@@ -20,7 +20,7 @@
         <!-- Ввод ДСЕ / команд + выпадающий список (как PowerToys Command Palette) -->
         <Grid Grid.Row="0" Grid.Column="0">
             <TextBox x:Name="MyTextBox"
-                     Text="Введите текст здесь..."
+                     Text="Введите команду или ДСЕ через $..."
                      Height="30" Padding="5"
                      PreviewKeyDown="MyTextBox_PreviewKeyDown"
                      TextChanged="MyTextBox_TextChanged"/>
@@ -32,6 +32,7 @@
                 <Border Background="White" BorderBrush="#CCCCCC" BorderThickness="1" Width="430">
                     <ListBox x:Name="CommandsList"
                              MaxHeight="200"
+                             DisplayMemberPath="Label"
                              MouseUp="CommandsList_MouseUp"
                              PreviewKeyDown="CommandsList_PreviewKeyDown"/>
                 </Border>

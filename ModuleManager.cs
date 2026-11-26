@@ -130,6 +130,13 @@ namespace HotkeyApp
 
         public static string GetModuleBaseAddress(string name) => $"http://127.0.0.1:{GetDef(name).Port}/";
 
+        /// <summary>Папка установленного модуля (код + module.json); null, если не установлен.</summary>
+        public static string? GetInstalledAppDir(string name)
+        {
+            var dir = ModuleAppDir(GetDef(name));
+            return Directory.Exists(dir) ? dir : null;
+        }
+
         // ---------------------------------------------------------- статус ----
 
         public static string? GetInstalledVersion(ModuleDef d)

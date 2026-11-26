@@ -373,6 +373,7 @@ namespace HotkeyApp
             {
                 ModulesBox.IsEnabled = true;
                 await RefreshModulesAsync();
+                Palette?.ReloadModuleCommands(); // команды могли измениться в новой версии модуля
             }
         }
 
@@ -394,6 +395,7 @@ namespace HotkeyApp
             {
                 ModulesBox.IsEnabled = true;
                 await RefreshModulesAsync();
+                Palette?.ReloadModuleCommands();
             }
         }
 

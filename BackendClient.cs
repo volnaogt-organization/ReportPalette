@@ -83,6 +83,29 @@ namespace HotkeyApp
             return result;
         }
 
+        /// <summary>
+        /// Произвольный POST к API модуля — выполнение команд из module.json.
+        /// Возвращает тело ответа; при ошибке бросает HttpRequestException с detail.
+        /// </summary>
+        public async Task<JsonElement> PostAsync(string endpoint, Dictionary<string, object?> payload,
+                                                 CancellationToken ct = default)
+        {
+            using var resp = await _http.PostAsJsonAsync(endpoint.TrimStart('/'), payload, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+
+            JsonElement json;
+            try { json = JsonDocument.Parse(body).RootElement.Clone(); }
+            catch { json = JsonDocument.Parse("{}").RootElement.Clone(); }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                string? detail = json.ValueKind == JsonValueKind.Object &&
+                                 json.TryGetProperty("detail", out var d) ? d.GetString() : null;
+                throw new HttpRequestException(detail ?? $"Модуль вернул {(int)resp.StatusCode}");
+            }
+            return json;
+        }
+
         public void Dispose() => _http.Dispose();
     }
 }

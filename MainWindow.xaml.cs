@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -18,8 +19,16 @@ namespace HotkeyApp
     /// </summary>
     public partial class MainWindow : Window
     {
-        private BackendClient? _backend; // создаётся после запуска локального модуля
+        private BackendClient? _backend; // legacy-клиент (совместимость со старым модулем)
         private AppSettings _settings = SettingsService.Load();
+
+        /// <summary>Команды из манифестов (module.json) установленных модулей.</summary>
+        private List<ModuleCommand> _moduleCommands = new();
+
+        /// <summary>Выбранная команда, ожидающая ввода аргументов (например, списка ДСЕ).</summary>
+        private ModuleCommand? _pendingCommand;
+
+        private readonly Dictionary<string, BackendClient> _moduleClients = new();
 
         [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -37,13 +46,6 @@ namespace HotkeyApp
         private DateTime _lastActivateTime = DateTime.MinValue;
         private SettingsWindow? _settingsWindow;
         private TrayIconService? _tray;
-
-        private static readonly (string Title, string Text)[] BuiltInCommands =
-        {
-            ("Отчёт 1010: введите ДСЕ через $", ""),
-            ("Отчёт 2012: введите ДСЕ через $", ""),
-            ("Настройки", "@settings"),
-        };
 
         public MainWindow()
         {
@@ -101,6 +103,7 @@ namespace HotkeyApp
             {
                 await ModuleManager.EnsureStartedAsync("managerdatabase", progress);
                 _backend = new BackendClient(ModuleManager.GetModuleBaseAddress("managerdatabase"));
+                ReloadModuleCommands();
                 StatusText.Text = "";
             }
             catch (Exception ex)
@@ -108,6 +111,12 @@ namespace HotkeyApp
                 StatusText.Text = "Модуль ManagerDataBase не запущен — откройте ⚙ → Модули";
                 Debug.WriteLine("InitializeModulesAsync: " + ex);
             }
+        }
+
+        /// <summary>Перечитывает команды из манифестов модулей (после установки/обновления).</summary>
+        public void ReloadModuleCommands()
+        {
+            _moduleCommands = ModuleCatalog.LoadCommands();
         }
 
         // ---------------- Хоткей ----------------
@@ -262,29 +271,74 @@ namespace HotkeyApp
             UpdateCommandPalette();
         }
 
+        /// <summary>Элемент выпадающего списка: подпись + действие.</summary>
+        private class PaletteEntry
+        {
+            public string Label { get; set; } = "";
+            public Action Run { get; set; } = () => { };
+        }
+
+        private PaletteEntry EntryFor(ModuleCommand cmd, string prefix = "")
+        {
+            var suffix = cmd.Input switch
+            {
+                "dse_list" => " — ДСЕ через $",
+                "excel_file" => " — выбор Excel-файла",
+                _ => "",
+            };
+            return new PaletteEntry { Label = prefix + cmd.Title + suffix, Run = () => StartCommand(cmd) };
+        }
+
+        /// <summary>При пустом поле — последние и частые команды (история использования).</summary>
+        private List<PaletteEntry> SuggestedEntries()
+        {
+            var items = new List<PaletteEntry>();
+            foreach (var key in CommandHistory.GetSuggested())
+            {
+                var cmd = _moduleCommands.FirstOrDefault(c => c.Key == key);
+                if (cmd != null)
+                    items.Add(EntryFor(cmd, prefix: "↺ "));
+            }
+            if (items.Count == 0) // истории нет — просто первые команды модулей
+                items.AddRange(_moduleCommands.Take(6).Select(c => EntryFor(c)));
+            return items;
+        }
+
         private void UpdateCommandPalette()
         {
             if (MyTextBox == null || CommandsPopup == null || CommandsList == null)
                 return;
 
             var query = MyTextBox.Text?.Trim() ?? "";
-            if (query.Length == 0 || query.StartsWith("Введите"))
+            if (query.StartsWith("Введите"))
             {
                 CommandsPopup.IsOpen = false;
                 return;
             }
 
-            var items = new List<string>();
+            List<PaletteEntry> items;
+            if (query.Length == 0)
+            {
+                items = SuggestedEntries();
+            }
+            else
+            {
+                items = new List<PaletteEntry>();
 
-            // встроенные команды
-            items.AddRange(BuiltInCommands
-                .Where(c => c.Title.Contains(query, StringComparison.OrdinalIgnoreCase))
-                .Select(c => c.Title));
+                // команды из манифестов модулей
+                items.AddRange(_moduleCommands
+                    .Where(c => c.Title.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    .Select(c => EntryFor(c)));
 
-            // приложения из панели запуска
-            items.AddRange(_settings.LaunchItems
-                .Where(i => i.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-                .Select(i => $"▶ {i.Name}"));
+                // встроенная команда
+                if ("Настройки".Contains(query, StringComparison.OrdinalIgnoreCase))
+                    items.Add(new PaletteEntry { Label = "Настройки", Run = OpenSettings });
+
+                // приложения из панели запуска
+                items.AddRange(_settings.LaunchItems
+                    .Where(i => i.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    .Select(i => new PaletteEntry { Label = "▶ " + i.Name, Run = () => LaunchProcess(i.Path, i.Arguments) }));
+            }
 
             if (items.Count == 0)
             {
@@ -299,14 +353,23 @@ namespace HotkeyApp
 
         private void MyTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (e.Key == Key.Escape)
+            {
+                CommandsPopup.IsOpen = false;
+                if (_pendingCommand != null) // отмена выбранной команды, ожидающей ввода
+                {
+                    _pendingCommand = null;
+                    StatusText.Text = "Выбор команды отменён";
+                    MyTextBox.Text = "";
+                }
+                e.Handled = true;
+                return;
+            }
+
             if (CommandsPopup.IsOpen)
             {
                 switch (e.Key)
                 {
-                    case Key.Escape:
-                        CommandsPopup.IsOpen = false;
-                        e.Handled = true;
-                        return;
                     case Key.Down:
                         CommandsList.SelectedIndex =
                             Math.Min(CommandsList.SelectedIndex + 1, CommandsList.Items.Count - 1);
@@ -331,34 +394,35 @@ namespace HotkeyApp
 
         private void CommandsList_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if (e.Key == Key.Enter && CommandsList.SelectedItem is PaletteEntry entry)
             {
                 CommandsPopup.IsOpen = false;
-                ExecuteInput(MyTextBox.Text);
+                MyTextBox.Text = "";
+                entry.Run();
                 e.Handled = true;
             }
         }
 
         private void CommandsList_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            var selected = CommandsList.SelectedItem as string;
-            if (selected != null)
+            if (CommandsList.SelectedItem is PaletteEntry entry)
             {
-                MyTextBox.Text = selected;
-                MyTextBox.CaretIndex = selected.Length;
+                CommandsPopup.IsOpen = false;
+                MyTextBox.Text = "";
+                MyTextBox.Focus();
+                entry.Run();
             }
-            CommandsPopup.IsOpen = false;
-            ExecuteInput(selected ?? MyTextBox.Text);
         }
 
         /// <summary>
-        /// Если введённая строка совпадает с названием команды/приложения — выполняем её,
-        /// иначе отправляем ДСЕ на бэкенд.
+        /// Разбор ввода палитры: точное совпадение с командой модуля — запуск команды;
+        /// ввод при выбранной команде — её аргументы; список ДСЕ «напрямую» —
+        /// команда по умолчанию (как раньше, отчёт из настроек/маркера 1010/2012).
         /// </summary>
-        private async void ExecuteInput(string input)
+        private void ExecuteInput(string input)
         {
             input = input?.Trim() ?? "";
-            if (input.Length == 0) return;
+            if (input.Length == 0 || input.StartsWith("Введите")) return;
 
             // команда со спец-префиксом — открыть окно настроек
             if (input == "@settings" ||
@@ -377,22 +441,140 @@ namespace HotkeyApp
                 return;
             }
 
-            // выбор отчёта из встроенных команд
+            // точное совпадение с командой модуля — запускаем её
+            var cmd = _moduleCommands.FirstOrDefault(c =>
+                string.Equals(c.Title, input, StringComparison.OrdinalIgnoreCase));
+            if (cmd != null)
+            {
+                StartCommand(cmd);
+                return;
+            }
+
+            // команда выбрана и ждёт ввода — текущий текст = её аргументы
+            if (_pendingCommand != null)
+            {
+                var pending = _pendingCommand;
+                if (pending.Input == "dse_list")
+                {
+                    var dse = ParseDse(input);
+                    if (dse.Count == 0) return;
+                    _pendingCommand = null;
+                    MyTextBox.Text = "";
+                    CommandHistory.Register(pending.Key);
+                    _ = ExecuteModuleCommandAsync(pending, dse, null);
+                }
+                return;
+            }
+
+            // сырой ввод ДСЕ без выбора команды — отчёт по умолчанию (как раньше)
+            var dseList = ParseDse(input);
+            if (dseList.Count == 0) return;
+
             int program = _settings.DefaultProgram;
             if (input.Contains("2012", StringComparison.OrdinalIgnoreCase)) program = 2012;
             if (input.Contains("1010", StringComparison.OrdinalIgnoreCase)) program = 1010;
 
-            var dseList = input
-                .Split(new[] { '$', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => s.Trim())
-                .Where(s => s.Length > 0)
-                .ToList();
+            // ищем команду модуля с этим program в payload; запасной вариант — default dse_list
+            var target = _moduleCommands.FirstOrDefault(c =>
+                             c.Input == "dse_list" && c.Payload != null &&
+                             c.Payload.TryGetValue("program", out var p) &&
+                             p.ValueKind == JsonValueKind.Number && p.GetInt32() == program)
+                         ?? _moduleCommands.FirstOrDefault(c => c.Input == "dse_list" && c.Default)
+                         ?? _moduleCommands.FirstOrDefault(c => c.Input == "dse_list");
 
-            // если ввод — это выбранная команда из палитры (без ДСЕ), не отправляем на бэкенд
-            if (BuiltInCommands.Any(c => string.Equals(c.Title, input, StringComparison.OrdinalIgnoreCase)))
+            if (target != null)
+            {
+                CommandHistory.Register(target.Key);
+                _ = ExecuteModuleCommandAsync(target, dseList, null);
                 return;
-            if (dseList.Count == 0) return;
+            }
 
+            // команды модуля недоступны (модуль старой версии) — прежний путь
+            _ = RunLegacyAsync(program, dseList);
+        }
+
+        private static List<string> ParseDse(string input) =>
+            input.Split(new[] { '$', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                 .Select(s => s.Trim())
+                 .Where(s => s.Length > 0)
+                 .ToList();
+
+        /// <summary>Старт команды модуля: фиксирует выбор и по типу ввода просит аргументы.</summary>
+        private void StartCommand(ModuleCommand cmd)
+        {
+            switch (cmd.Input)
+            {
+                case "dse_list":
+                    _pendingCommand = cmd;
+                    MyTextBox.Text = "";
+                    MyTextBox.Focus();
+                    StatusText.Text = $"Выбрано: {cmd.Title} — {cmd.Hint ?? "введите ДСЕ через $"}; " +
+                                      "Enter — выполнить, Esc — отмена";
+                    break;
+
+                case "excel_file":
+                    var dlg = new Microsoft.Win32.OpenFileDialog
+                    {
+                        Title = cmd.Title,
+                        Filter = "Excel (*.xlsx;*.xls)|*.xlsx;*.xls|Все файлы (*.*)|*.*"
+                    };
+                    if (dlg.ShowDialog(this) == true)
+                    {
+                        CommandHistory.Register(cmd.Key);
+                        _ = ExecuteModuleCommandAsync(cmd, null, dlg.FileName);
+                    }
+                    break;
+
+                default: // none
+                    CommandHistory.Register(cmd.Key);
+                    _ = ExecuteModuleCommandAsync(cmd, null, null);
+                    break;
+            }
+        }
+
+        /// <summary>Выполнение команды модуля; прогресс и результат — в статус-строке.</summary>
+        private async Task ExecuteModuleCommandAsync(
+            ModuleCommand cmd, IReadOnlyList<string>? dseList, string? filePath)
+        {
+            StatusText.Text = $"[{cmd.Title}] выполняется…";
+            try
+            {
+                var client = ClientForModule(cmd.ModuleName);
+                var json = await client.PostAsync(cmd.Endpoint, cmd.BuildPayload(dseList, filePath));
+                StatusText.Text = $"[{cmd.Title}] {DescribeResult(json)}";
+                MyTextBox.Text = "";
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = $"[{cmd.Title}] ошибка";
+                MessageBox.Show($"Команда «{cmd.Title}» завершилась с ошибкой:\n{ex.Message}",
+                                "Модули", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private static string DescribeResult(JsonElement json)
+        {
+            if (json.ValueKind == JsonValueKind.Object)
+            {
+                if (json.TryGetProperty("processed", out var pr) &&
+                    json.TryGetProperty("program", out var pg))
+                    return $"готово, обработано ДСЕ: {pr.GetInt32()} (отчёт {pg.GetInt32()})";
+                if (json.TryGetProperty("status", out var st))
+                    return "статус: " + (st.GetString() ?? "ok");
+            }
+            return "готово";
+        }
+
+        private BackendClient ClientForModule(string name)
+        {
+            if (!_moduleClients.TryGetValue(name, out var client))
+                _moduleClients[name] = client = new BackendClient(ModuleManager.GetModuleBaseAddress(name));
+            return client;
+        }
+
+        /// <summary>Старый путь: модуль без манифеста команд (версии до появления module.json ui).</summary>
+        private async Task RunLegacyAsync(int program, List<string> dseList)
+        {
             if (_backend == null)
             {
                 MessageBox.Show("Модуль ManagerDataBase ещё запускается или не установлен.\n" +
@@ -404,11 +586,12 @@ namespace HotkeyApp
             try
             {
                 var result = await _backend.RunAsync(program: program, dse: dseList);
-                MessageBox.Show($"Готово: обработано {result.Processed} ДСЕ (отчёт {result.Program}).",
-                                "ManagerDataBase", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusText.Text = $"Готово: обработано {result.Processed} ДСЕ (отчёт {result.Program}).";
+                MyTextBox.Text = "";
             }
             catch (Exception ex)
             {
+                StatusText.Text = "Ошибка выполнения";
                 MessageBox.Show($"Не удалось выполнить запрос к модулю:\n{ex.Message}\n\n" +
                                 "Проверьте состояние модуля в ⚙ → Модули.",
                                 "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
