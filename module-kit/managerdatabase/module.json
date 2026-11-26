@@ -34,22 +34,25 @@
       {
         "id": "annual_plan",
         "title": "Загрузка годового отчёта (365)",
-        "hint": "выберите Excel-файл",
-        "input": "excel_file",
+        "hint": "введите путь к файлу или нажмите 📂",
+        "input": "file",
+        "filter": "Excel (*.xlsx;*.xls)|*.xlsx;*.xls|Все файлы (*.*)|*.*",
         "endpoint": "/annual_plan"
       },
       {
         "id": "queue_management",
         "title": "УП по очередям (3)",
-        "hint": "выберите Excel-файл",
-        "input": "excel_file",
+        "hint": "введите путь к файлу или нажмите 📂",
+        "input": "file",
+        "filter": "Excel (*.xlsx;*.xls)|*.xlsx;*.xls|Все файлы (*.*)|*.*",
         "endpoint": "/queue_management"
       },
       {
         "id": "sz_notifications",
         "title": "ДСЕ по СЗ и извещениям (4)",
-        "hint": "выберите Excel-файл",
-        "input": "excel_file",
+        "hint": "введите путь к файлу или нажмите 📂",
+        "input": "file",
+        "filter": "Excel (*.xlsx;*.xls)|*.xlsx;*.xls|Все файлы (*.*)|*.*",
         "endpoint": "/sz_notifications"
       }
     ]

@@ -17,8 +17,11 @@ namespace HotkeyApp
         [JsonPropertyName("title")] public string Title { get; set; } = "";
         [JsonPropertyName("hint")] public string? Hint { get; set; }
 
-        /// <summary>Тип ввода: dse_list (список ДСЕ через $), excel_file (выбор файла), none.</summary>
+        /// <summary>Тип ввода: dse_list (список ДСЕ через $), file (путь к файлу), none.</summary>
         [JsonPropertyName("input")] public string Input { get; set; } = "none";
+
+        /// <summary>Фильтр диалога выбора файла, напр. "Excel|*.xlsx;*.xls".</summary>
+        [JsonPropertyName("filter")] public string? Filter { get; set; }
 
         [JsonPropertyName("endpoint")] public string Endpoint { get; set; } = "";
         [JsonPropertyName("payload")] public Dictionary<string, JsonElement>? Payload { get; set; }
@@ -28,6 +31,9 @@ namespace HotkeyApp
 
         [JsonIgnore] public string ModuleName { get; set; } = "";
         [JsonIgnore] public string Key => ModuleName + ":" + Id;
+
+        /// <summary>file — путь к файлу (excel_file — устаревший синоним).</summary>
+        [JsonIgnore] public bool IsFileInput => Input == "file" || Input == "excel_file";
 
         public bool IsValid => Id.Length > 0 && Title.Length > 0 && Endpoint.Length > 0;
 

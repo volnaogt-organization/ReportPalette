@@ -280,12 +280,9 @@ namespace HotkeyApp
 
         private PaletteEntry EntryFor(ModuleCommand cmd, string prefix = "")
         {
-            var suffix = cmd.Input switch
-            {
-                "dse_list" => " — ДСЕ через $",
-                "excel_file" => " — выбор Excel-файла",
-                _ => "",
-            };
+            var suffix = cmd.Input == "dse_list" ? " — ДСЕ через $"
+                       : cmd.IsFileInput ? " — путь к файлу (📂)"
+                       : "";
             return new PaletteEntry { Label = prefix + cmd.Title + suffix, Run = () => StartCommand(cmd) };
         }
 
@@ -358,7 +355,7 @@ namespace HotkeyApp
                 CommandsPopup.IsOpen = false;
                 if (_pendingCommand != null) // отмена выбранной команды, ожидающей ввода
                 {
-                    _pendingCommand = null;
+                    ClearPendingCommand();
                     StatusText.Text = "Выбор команды отменён";
                     MyTextBox.Text = "";
                 }
@@ -458,10 +455,19 @@ namespace HotkeyApp
                 {
                     var dse = ParseDse(input);
                     if (dse.Count == 0) return;
-                    _pendingCommand = null;
+                    ClearPendingCommand();
                     MyTextBox.Text = "";
                     CommandHistory.Register(pending.Key);
                     _ = ExecuteModuleCommandAsync(pending, dse, null);
+                }
+                else if (pending.IsFileInput)
+                {
+                    var path = input.Trim('"', '\'');
+                    if (path.Length == 0) return;
+                    ClearPendingCommand();
+                    MyTextBox.Text = "";
+                    CommandHistory.Register(pending.Key);
+                    _ = ExecuteModuleCommandAsync(pending, null, path);
                 }
                 return;
             }
@@ -502,34 +508,61 @@ namespace HotkeyApp
         /// <summary>Старт команды модуля: фиксирует выбор и по типу ввода просит аргументы.</summary>
         private void StartCommand(ModuleCommand cmd)
         {
-            switch (cmd.Input)
+            if (cmd.Input == "dse_list")
             {
-                case "dse_list":
-                    _pendingCommand = cmd;
-                    MyTextBox.Text = "";
-                    MyTextBox.Focus();
-                    StatusText.Text = $"Выбрано: {cmd.Title} — {cmd.Hint ?? "введите ДСЕ через $"}; " +
-                                      "Enter — выполнить, Esc — отмена";
-                    break;
-
-                case "excel_file":
-                    var dlg = new Microsoft.Win32.OpenFileDialog
-                    {
-                        Title = cmd.Title,
-                        Filter = "Excel (*.xlsx;*.xls)|*.xlsx;*.xls|Все файлы (*.*)|*.*"
-                    };
-                    if (dlg.ShowDialog(this) == true)
-                    {
-                        CommandHistory.Register(cmd.Key);
-                        _ = ExecuteModuleCommandAsync(cmd, null, dlg.FileName);
-                    }
-                    break;
-
-                default: // none
-                    CommandHistory.Register(cmd.Key);
-                    _ = ExecuteModuleCommandAsync(cmd, null, null);
-                    break;
+                _pendingCommand = cmd;
+                MyTextBox.Text = "";
+                MyTextBox.Focus();
+                StatusText.Text = $"Выбрано: {cmd.Title} — {cmd.Hint ?? "введите ДСЕ через $"}; " +
+                                  "Enter — выполнить, Esc — отмена";
             }
+            else if (cmd.IsFileInput)
+            {
+                _pendingCommand = cmd;
+                BrowseFileButton.Visibility = Visibility.Visible;
+                MyTextBox.Text = "";
+                MyTextBox.Focus();
+                StatusText.Text = $"Выбрано: {cmd.Title} — введите путь к файлу или нажмите 📂; " +
+                                  "Enter — выполнить, Esc — отмена";
+            }
+            else // none
+            {
+                CommandHistory.Register(cmd.Key);
+                _ = ExecuteModuleCommandAsync(cmd, null, null);
+            }
+        }
+
+        /// <summary>Кнопка 📂: диалог выбора файла для команды, ожидающей путь.</summary>
+        private void BrowseFileButton_Click(object sender, RoutedEventArgs e)
+        {
+            var cmd = _pendingCommand;
+            if (cmd == null || !cmd.IsFileInput)
+            {
+                BrowseFileButton.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = cmd.Title,
+                Filter = !string.IsNullOrEmpty(cmd.Filter)
+                    ? cmd.Filter
+                    : "Excel (*.xlsx;*.xls)|*.xlsx;*.xls|Все файлы (*.*)|*.*"
+            };
+            if (dlg.ShowDialog(this) == true)
+            {
+                MyTextBox.Text = dlg.FileName;
+                MyTextBox.CaretIndex = MyTextBox.Text.Length;
+                MyTextBox.Focus();
+                StatusText.Text = $"[{cmd.Title}] файл выбран: {System.IO.Path.GetFileName(dlg.FileName)} — Enter для выполнения";
+            }
+        }
+
+        /// <summary>Сброс выбранной команды (после выполнения или по Esc).</summary>
+        private void ClearPendingCommand()
+        {
+            _pendingCommand = null;
+            BrowseFileButton.Visibility = Visibility.Collapsed;
         }
 
         /// <summary>Выполнение команды модуля; прогресс и результат — в статус-строке.</summary>
