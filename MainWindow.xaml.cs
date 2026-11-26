@@ -18,7 +18,7 @@ namespace HotkeyApp
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly BackendClient _backend = new();
+        private BackendClient? _backend; // создаётся после запуска локального модуля
         private AppSettings _settings = SettingsService.Load();
 
         [DllImport("user32.dll")]
@@ -36,6 +36,7 @@ namespace HotkeyApp
         private HwndSource _source;
         private DateTime _lastActivateTime = DateTime.MinValue;
         private SettingsWindow? _settingsWindow;
+        private TrayIconService? _tray;
 
         private static readonly (string Title, string Text)[] BuiltInCommands =
         {
@@ -52,17 +53,27 @@ namespace HotkeyApp
             _source = HwndSource.FromHwnd(handle);
             _source.AddHook(HwndHook);
 
+            ApplyWindowModeFromSettings();
+
+            // Значок в трее: доступ к палитре, даже если хоткей занят/не зарегистрировался
+            _tray = new TrayIconService();
+            _tray.Install(ShowPalette, OpenSettings, () => Close());
+
             bool hotkeyRegistered = ReregisterHotkey();
             if (!hotkeyRegistered)
             {
+                _tray.ShowBalloon(
+                    "ReportPalette",
+                    $"Хоткей {_settings.HotkeyModifiers}+{_settings.HotkeyKey} занят другой программой.\n" +
+                    "Палитру можно открыть двойным кликом по значку в трее; " +
+                    "другую комбинацию — в настройках (⚙).");
                 MessageBox.Show(
                     $"Не удалось зарегистрировать хоткей " +
                     $"{_settings.HotkeyModifiers}+{_settings.HotkeyKey}.\n" +
-                    "Возможно, комбинация занята. Выберите другую в настройках (⚙).",
+                    "Возможно, комбинация занята. Выберите другую в настройках (⚙) " +
+                    "или открывайте палитру двойным кликом по значку в трее.",
                     "Хоткей", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-
-            ApplyWindowModeFromSettings();
 
             // Прячем окно в фон только если хоткей зарегистрирован —
             // иначе пользователь не сможет открыть окно и выбрать другую комбинацию.
@@ -70,6 +81,32 @@ namespace HotkeyApp
             {
                 this.Visibility = Visibility.Hidden;
                 this.ShowInTaskbar = false;
+            }
+
+            // Модули поднимаются в фоне: при первом запуске скачиваются
+            // портабельный Python и последний релиз ManagerDataBase.
+            _ = InitializeModulesAsync();
+        }
+
+        // ---------------- Модули ----------------
+
+        /// <summary>
+        /// Гарантирует, что модуль ManagerDataBase скачан и запущен локально,
+        /// затем подключает к нему клиента. Прогресс и ошибки — в статус-строке.
+        /// </summary>
+        private async Task InitializeModulesAsync()
+        {
+            var progress = new Progress<string>(msg => StatusText.Text = msg);
+            try
+            {
+                await ModuleManager.EnsureStartedAsync("managerdatabase", progress);
+                _backend = new BackendClient(ModuleManager.GetModuleBaseAddress("managerdatabase"));
+                StatusText.Text = "";
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = "Модуль ManagerDataBase не запущен — откройте ⚙ → Модули";
+                Debug.WriteLine("InitializeModulesAsync: " + ex);
             }
         }
 
@@ -112,6 +149,8 @@ namespace HotkeyApp
             UnregisterHotKey(handle, HOTKEY_ID);
             _source?.RemoveHook(HwndHook);
             _settingsWindow?.Close();
+            _tray?.Dispose();
+            ModuleManager.StopAll(); // гасим локальные сервисы модулей
             base.OnClosed(e);
         }
 
@@ -133,7 +172,10 @@ namespace HotkeyApp
             return IntPtr.Zero;
         }
 
-        private void OnHotkeyPressed()
+        private void OnHotkeyPressed() => ShowPalette();
+
+        /// <summary>Показывает палитру и переносит фокус в поле ввода (хоткей, трей).</summary>
+        public void ShowPalette()
         {
             _lastActivateTime = DateTime.Now;
 
@@ -351,6 +393,14 @@ namespace HotkeyApp
                 return;
             if (dseList.Count == 0) return;
 
+            if (_backend == null)
+            {
+                MessageBox.Show("Модуль ManagerDataBase ещё запускается или не установлен.\n" +
+                                "Статус — внизу окна палитры; управление — в ⚙ → Модули.",
+                                "Модули", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             try
             {
                 var result = await _backend.RunAsync(program: program, dse: dseList);
@@ -359,8 +409,8 @@ namespace HotkeyApp
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Не удалось выполнить запрос к бэкенду:\n{ex.Message}\n\n" +
-                                "Убедитесь, что Python-сервис запущен (см. backend/README.md).",
+                MessageBox.Show($"Не удалось выполнить запрос к модулю:\n{ex.Message}\n\n" +
+                                "Проверьте состояние модуля в ⚙ → Модули.",
                                 "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }

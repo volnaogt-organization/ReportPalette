@@ -8,13 +8,17 @@
         Background="White"
         Deactivated="Window_Deactivated">
     <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <!-- Ввод ДСЕ / команд + выпадающий список (как PowerToys Command Palette) -->
-        <Grid Grid.Column="0">
+        <Grid Grid.Row="0" Grid.Column="0">
             <TextBox x:Name="MyTextBox"
                      Text="Введите текст здесь..."
                      Height="30" Padding="5"
@@ -35,8 +39,13 @@
         </Grid>
 
         <!-- Кнопка открытия окна настроек -->
-        <Button Grid.Column="1" Content="⚙" Width="32" Height="30"
+        <Button Grid.Row="0" Grid.Column="1" Content="⚙" Width="32" Height="30"
                 Margin="5,0,0,0" ToolTip="Настройки"
                 Click="SettingsButton_Click"/>
+
+        <!-- Статус модулей: виден при первом скачивании/запуске и при ошибках -->
+        <TextBlock x:Name="StatusText" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                   FontSize="10" Foreground="Gray" Margin="2,4,0,0"
+                   TextWrapping="Wrap"/>
     </Grid>
 </Window>

@@ -1,8 +1,16 @@
-# ReportPalette: веб-фронтенд + FastAPI-бэкенд в двух контейнерах.
+# ReportPalette: модульная система.
+#   frontend — веб-палитра (nginx)
+#   backend  — шлюз: реестр модулей, прокси, обновление модулей из релизов GitHub
+#   managerdatabase — модуль (контейнер из GHCR-образа релиза; + будущие модули сюда же)
 #
-# Подготовка (один раз): git clone https://github.com/volnaogt-organization/ManagerDataBase backend/ManagerDataBase
-# Запуск:                docker compose up -d --build
-# Открыть:               http://localhost:8080
+# Запуск:   docker compose up -d --build
+# Открыть:  http://localhost:8080
+#
+# Для разработки модуля из локальных исходников вместо GHCR-образа:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# Если пакет GHCR приватный, один раз на сервере: docker login ghcr.io
+# Для приватных репозиториев/лимитов GitHub API задайте GITHUB_TOKEN в .env
 
 services:
   backend:
@@ -10,7 +18,14 @@ services:
     container_name: reportpalette-backend
     restart: unless-stopped
     ports:
-      - "8000:8000"   # прямой доступ к API (Swagger: /docs); можно закомментировать
+      - "8000:8000"   # прямой доступ к API шлюза (Swagger: /docs); можно закомментировать
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    volumes:
+      # доступ к Docker Engine — нужен для обновления модулей по кнопке из интерфейса
+      - /var/run/docker.sock:/var/run/docker.sock
+      # реестр модулей наружу: добавление модуля = правка этого файла + restart шлюза
+      - ./backend/modules.json:/app/modules.json:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 30s
@@ -26,3 +41,15 @@ services:
     depends_on:
       backend:
         condition: service_started
+
+  # ----------------------------- модули -----------------------------
+
+  managerdatabase:
+    image: ghcr.io/volnaogt-organization/managerdatabase:${MDB_VERSION:-latest}
+    container_name: reportpalette-mdb
+    restart: unless-stopped
+    # Порт наружу не публикуется: клиенты ходят через шлюз (backend).
+    # Данные Excel/БД, к которым обращается модуль, должны быть доступны из контейнера.
+    # Пример проброса сетевой папки/конфигов при необходимости:
+    # volumes:
+    #   - /mnt/data:/data
