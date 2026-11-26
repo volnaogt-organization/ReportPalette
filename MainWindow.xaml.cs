@@ -14,8 +14,11 @@ namespace HotkeyApp
     /// <summary>
     /// Палитра команд (как PowerToys Command Palette): вызывается глобальным
     /// хоткеем, ищет по встроенным командам и приложениям из панели запуска,
-    /// отправляет ДСЕ на бэкенд. Все настройки — в отдельном окне SettingsWindow
-    /// (кнопка ⚙ или команда «Настройки»).
+    /// отправляет ДСЕ на бэкенд. Список команд виден всегда (последние/частые,
+    /// фильтруются по вводу). Окно без системных кнопок: прячется при клике
+    /// вне него, либо закрепляется кнопкой 📌 на самой палитре. Все остальные
+    /// настройки — в отдельном окне SettingsWindow (кнопка ⚙ или команда
+    /// «Настройки»).
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -29,6 +32,12 @@ namespace HotkeyApp
         private ModuleCommand? _pendingCommand;
 
         private readonly Dictionary<string, BackendClient> _moduleClients = new();
+
+        /// <summary>Открыт модальный диалог (файл, лист/столбец) — палитру не прятать.</summary>
+        private bool _modalOpen;
+
+        /// <summary>Пользователь навигировал по списку стрелками — Enter берёт выбранный пункт.</summary>
+        private bool _listNavigated;
 
         [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -104,6 +113,7 @@ namespace HotkeyApp
                 await ModuleManager.EnsureStartedAsync("managerdatabase", progress);
                 _backend = new BackendClient(ModuleManager.GetModuleBaseAddress("managerdatabase"));
                 ReloadModuleCommands();
+                UpdateCommandPalette(); // команды появились — обновить список
                 StatusText.Text = "";
             }
             catch (Exception ex)
@@ -117,6 +127,7 @@ namespace HotkeyApp
         public void ReloadModuleCommands()
         {
             _moduleCommands = ModuleCatalog.LoadCommands();
+            if (IsLoaded) UpdateCommandPalette();
         }
 
         // ---------------- Хоткей ----------------
@@ -224,12 +235,35 @@ namespace HotkeyApp
         public void ReloadSettings()
         {
             _settings = SettingsService.Load();
+            UpdatePinButton();
         }
 
         /// <summary>Применяет режим окна из текущих настроек.</summary>
         public void ApplyWindowModeFromSettings()
         {
             Topmost = _settings.Topmost;
+            UpdatePinButton();
+        }
+
+        // ---------------- Пин (закрепить поверх окон) ----------------
+
+        private void PinButton_Click(object sender, RoutedEventArgs e)
+        {
+            bool pin = !(_settings.Topmost && _settings.StayOpenOnLostFocus);
+            _settings.Topmost = pin;
+            _settings.StayOpenOnLostFocus = pin;
+            try { SettingsService.Save(_settings); } catch { }
+            ApplyWindowModeFromSettings();
+        }
+
+        private void UpdatePinButton()
+        {
+            if (PinButton == null) return;
+            bool pinned = _settings.Topmost && _settings.StayOpenOnLostFocus;
+            PinButton.Content = pinned ? "📌" : "📍";
+            PinButton.ToolTip = pinned
+                ? "Палитра закреплена поверх окон — нажмите, чтобы открепить"
+                : "Палитра прячется при клике вне её — нажмите, чтобы закрепить поверх окон";
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e) => OpenSettings();
@@ -246,13 +280,31 @@ namespace HotkeyApp
 
         // ---------------- Поведение окна ----------------
 
+        /// <summary>Перетаскивание окна за пустой фон (системного заголовка нет).</summary>
+        private void RootBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // тащим только если нажали не по полю ввода/кнопке/списку
+            if (e.OriginalSource is Border or Grid)
+            {
+                try { DragMove(); } catch { }
+            }
+        }
+
+        private void HidePalette()
+        {
+            this.Visibility = Visibility.Hidden;
+            this.ShowInTaskbar = false;
+        }
+
         private void Window_Deactivated(object sender, EventArgs e)
         {
-            // Не прячем палитру, пока открыто окно настроек
+            // Не прячем палитру, пока открыт модальный диалог или окно настроек
+            if (_modalOpen)
+                return;
             if (_settingsWindow != null && _settingsWindow.IsVisible)
                 return;
 
-            // В «обычном закреплённом» режиме окно НЕ прячется при потере фокуса
+            // В закреплённом режиме окно НЕ прячется при потере фокуса
             if (_settings.StayOpenOnLostFocus)
                 return;
 
@@ -260,19 +312,17 @@ namespace HotkeyApp
             if ((DateTime.Now - _lastActivateTime).TotalMilliseconds < 500)
                 return;
 
-            CommandsPopup.IsOpen = false;
-            this.Visibility = Visibility.Hidden;
-            this.ShowInTaskbar = false;
+            HidePalette();
         }
 
-        // ---------------- Выпадающий список команд + выполнение ----------------
+        // ---------------- Список команд + выполнение ----------------
 
         private void MyTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             UpdateCommandPalette();
         }
 
-        /// <summary>Элемент выпадающего списка: подпись + действие.</summary>
+        /// <summary>Элемент списка: подпись + действие.</summary>
         private class PaletteEntry
         {
             public string Label { get; set; } = "";
@@ -282,6 +332,7 @@ namespace HotkeyApp
         private PaletteEntry EntryFor(ModuleCommand cmd, string prefix = "")
         {
             var suffix = cmd.Input == "dse_list" ? " — ДСЕ через $"
+                       : cmd.Input == "excel_column" ? " — столбец из Excel (📂)"
                        : cmd.IsFileInput ? " — путь к файлу (📂)"
                        : "";
             return new PaletteEntry { Label = prefix + cmd.Title + suffix, Run = () => StartCommand(cmd) };
@@ -304,7 +355,7 @@ namespace HotkeyApp
 
         private void UpdateCommandPalette()
         {
-            if (MyTextBox == null || CommandsPopup == null || CommandsList == null)
+            if (MyTextBox == null || CommandsList == null || CommandsPanel == null)
                 return;
 
             var query = MyTextBox.Text?.Trim() ?? "";
@@ -334,33 +385,39 @@ namespace HotkeyApp
                     .Select(i => new PaletteEntry { Label = "▶ " + i.Name, Run = () => LaunchProcess(i.Path, i.Arguments) }));
             }
 
+            _listNavigated = false;
+
             if (items.Count == 0)
             {
-                CommandsPopup.IsOpen = false;
+                CommandsList.ItemsSource = null;
+                CommandsPanel.Visibility = Visibility.Collapsed;
                 return;
             }
 
             CommandsList.ItemsSource = items;
             CommandsList.SelectedIndex = 0;
-            CommandsPopup.IsOpen = true;
+            CommandsPanel.Visibility = Visibility.Visible;
         }
 
         private void MyTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
             {
-                CommandsPopup.IsOpen = false;
                 if (_pendingCommand != null) // отмена выбранной команды, ожидающей ввода
                 {
                     ClearPendingCommand();
                     StatusText.Text = "Выбор команды отменён";
                     MyTextBox.Text = "";
                 }
+                else
+                {
+                    HidePalette(); // ничего не выбрано — спрятать палитру
+                }
                 e.Handled = true;
                 return;
             }
 
-            if (CommandsPopup.IsOpen)
+            if (CommandsList.Items.Count > 0)
             {
                 switch (e.Key)
                 {
@@ -368,11 +425,13 @@ namespace HotkeyApp
                         CommandsList.SelectedIndex =
                             Math.Min(CommandsList.SelectedIndex + 1, CommandsList.Items.Count - 1);
                         CommandsList.ScrollIntoView(CommandsList.SelectedItem);
+                        _listNavigated = true;
                         e.Handled = true;
                         return;
                     case Key.Up:
                         CommandsList.SelectedIndex = Math.Max(CommandsList.SelectedIndex - 1, 0);
                         CommandsList.ScrollIntoView(CommandsList.SelectedItem);
+                        _listNavigated = true;
                         e.Handled = true;
                         return;
                 }
@@ -380,8 +439,17 @@ namespace HotkeyApp
 
             if (e.Key == Key.Enter)
             {
-                CommandsPopup.IsOpen = false;
-                ExecuteInput(MyTextBox.Text);
+                // стрелками выбрали пункт списка — выполняем его
+                if (_listNavigated && CommandsList.SelectedItem is PaletteEntry entry)
+                {
+                    _listNavigated = false;
+                    MyTextBox.Text = "";
+                    entry.Run();
+                }
+                else
+                {
+                    ExecuteInput(MyTextBox.Text);
+                }
                 e.Handled = true;
             }
         }
@@ -390,7 +458,6 @@ namespace HotkeyApp
         {
             if (e.Key == Key.Enter && CommandsList.SelectedItem is PaletteEntry entry)
             {
-                CommandsPopup.IsOpen = false;
                 MyTextBox.Text = "";
                 entry.Run();
                 e.Handled = true;
@@ -401,7 +468,6 @@ namespace HotkeyApp
         {
             if (CommandsList.SelectedItem is PaletteEntry entry)
             {
-                CommandsPopup.IsOpen = false;
                 MyTextBox.Text = "";
                 MyTextBox.Focus();
                 entry.Run();
@@ -513,6 +579,10 @@ namespace HotkeyApp
                 StatusText.Text = $"Выбрано: {cmd.Title} — {cmd.Hint ?? "введите ДСЕ через $"}; " +
                                   "Enter — выполнить, Esc — отмена";
             }
+            else if (cmd.Input == "excel_column")
+            {
+                _ = StartExcelColumnCommandAsync(cmd);
+            }
             else if (cmd.IsFileInput)
             {
                 _pendingCommand = cmd;
@@ -529,6 +599,91 @@ namespace HotkeyApp
             }
         }
 
+        /// <summary>
+        /// Команда «столбец из Excel»: диалог файла → диалог листа и столбца →
+        /// чтение ДСЕ из столбца через модуль → выполнение команды с этим списком.
+        /// </summary>
+        private async Task StartExcelColumnCommandAsync(ModuleCommand cmd)
+        {
+            string? path = null;
+            _modalOpen = true; // диалоги крадут фокус — палитру не прячем
+            try
+            {
+                var dlg = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = cmd.Title,
+                    Filter = !string.IsNullOrEmpty(cmd.Filter)
+                        ? cmd.Filter
+                        : "Excel (*.xlsx;*.xls;*.xlsm)|*.xlsx;*.xls;*.xlsm|Все файлы (*.*)|*.*"
+                };
+                if (dlg.ShowDialog(this) == true)
+                    path = dlg.FileName;
+            }
+            finally { _modalOpen = false; }
+
+            if (path == null)
+            {
+                StatusText.Text = $"[{cmd.Title}] выбор файла отменён";
+                return;
+            }
+
+            StatusText.Text = $"[{cmd.Title}] читаю листы файла…";
+
+            (string Sheet, int ColumnIndex)? pick;
+            _modalOpen = true;
+            try
+            {
+                pick = await ExcelColumnDialog.PickAsync(
+                    this, ClientForModule(cmd.ModuleName), path, cmd.Title);
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = $"[{cmd.Title}] ошибка чтения файла";
+                MessageBox.Show($"Не удалось прочитать файл:\n{ex.Message}",
+                                cmd.Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            finally { _modalOpen = false; }
+
+            if (pick == null)
+            {
+                StatusText.Text = $"[{cmd.Title}] выбор столбца отменён";
+                return;
+            }
+
+            StatusText.Text = $"[{cmd.Title}] читаю столбец «{pick.Value.Sheet}»…";
+            try
+            {
+                var json = await ClientForModule(cmd.ModuleName).PostAsync(
+                    "/excel/dse_column",
+                    new Dictionary<string, object?>
+                    {
+                        ["path"] = path,
+                        ["sheet"] = pick.Value.Sheet,
+                        ["column_index"] = pick.Value.ColumnIndex
+                    });
+
+                var dse = json.GetProperty("dse_list").EnumerateArray()
+                              .Select(el => el.GetString() ?? "")
+                              .Where(s => s.Length > 0)
+                              .ToList();
+                if (dse.Count == 0)
+                {
+                    StatusText.Text = $"[{cmd.Title}] в столбце нет значений";
+                    return;
+                }
+
+                CommandHistory.Register(cmd.Key);
+                await ExecuteModuleCommandAsync(cmd, dse, null);
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = $"[{cmd.Title}] ошибка чтения столбца";
+                MessageBox.Show($"Не удалось прочитать столбец:\n{ex.Message}",
+                                cmd.Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         /// <summary>Кнопка 📂: диалог выбора файла для команды, ожидающей путь.</summary>
         private void BrowseFileButton_Click(object sender, RoutedEventArgs e)
         {
@@ -539,20 +694,25 @@ namespace HotkeyApp
                 return;
             }
 
-            var dlg = new Microsoft.Win32.OpenFileDialog
+            _modalOpen = true; // диалог крадёт фокус — палитру не прячем
+            try
             {
-                Title = cmd.Title,
-                Filter = !string.IsNullOrEmpty(cmd.Filter)
-                    ? cmd.Filter
-                    : "Excel (*.xlsx;*.xls)|*.xlsx;*.xls|Все файлы (*.*)|*.*"
-            };
-            if (dlg.ShowDialog(this) == true)
-            {
-                MyTextBox.Text = dlg.FileName;
-                MyTextBox.CaretIndex = MyTextBox.Text.Length;
-                MyTextBox.Focus();
-                StatusText.Text = $"[{cmd.Title}] файл выбран: {System.IO.Path.GetFileName(dlg.FileName)} — Enter для выполнения";
+                var dlg = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = cmd.Title,
+                    Filter = !string.IsNullOrEmpty(cmd.Filter)
+                        ? cmd.Filter
+                        : "Excel (*.xlsx;*.xls)|*.xlsx;*.xls|Все файлы (*.*)|*.*"
+                };
+                if (dlg.ShowDialog(this) == true)
+                {
+                    MyTextBox.Text = dlg.FileName;
+                    MyTextBox.CaretIndex = MyTextBox.Text.Length;
+                    MyTextBox.Focus();
+                    StatusText.Text = $"[{cmd.Title}] файл выбран: {System.IO.Path.GetFileName(dlg.FileName)} — Enter для выполнения";
+                }
             }
+            finally { _modalOpen = false; }
         }
 
         /// <summary>Сброс выбранной команды (после выполнения или по Esc).</summary>
@@ -577,8 +737,13 @@ namespace HotkeyApp
             catch (Exception ex)
             {
                 StatusText.Text = $"[{cmd.Title}] ошибка";
-                MessageBox.Show($"Команда «{cmd.Title}» завершилась с ошибкой:\n{ex.Message}",
-                                "Модули", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _modalOpen = true;
+                try
+                {
+                    MessageBox.Show($"Команда «{cmd.Title}» завершилась с ошибкой:\n{ex.Message}",
+                                    "Модули", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                finally { _modalOpen = false; }
             }
         }
 
