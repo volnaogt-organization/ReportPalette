@@ -214,6 +214,7 @@ namespace HotkeyApp
             {
                 MyTextBox.Focus();
                 MyTextBox.SelectAll();
+                UpdateCommandPalette(); // сразу показываем последние/частые команды
             }));
         }
 
@@ -307,16 +308,12 @@ namespace HotkeyApp
                 return;
 
             var query = MyTextBox.Text?.Trim() ?? "";
-            if (query.StartsWith("Введите"))
-            {
-                CommandsPopup.IsOpen = false;
-                return;
-            }
+            if (query.StartsWith("Введите")) query = ""; // текст-заглушка = пустой ввод
 
             List<PaletteEntry> items;
             if (query.Length == 0)
             {
-                items = SuggestedEntries();
+                items = SuggestedEntries(); // пустое поле: последние и частые команды
             }
             else
             {
