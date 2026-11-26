@@ -199,7 +199,9 @@ namespace HotkeyApp
             await sem.WaitAsync(ct);
             try
             {
-                if (!Directory.Exists(ModuleAppDir(def)))
+                // установка считается валидной, только если есть и код, и маркер версии
+                bool installed = Directory.Exists(ModuleAppDir(def)) && GetInstalledVersion(def) != null;
+                if (!installed)
                     await InstallOrUpdateLockedAsync(def, progress, ct); // сама запустит
                 else if (!await IsRunningAsync(def))
                     await StartAndWaitAsync(def, progress, ct);
@@ -333,18 +335,37 @@ namespace HotkeyApp
             var logDir = Path.GetDirectoryName(ModuleLogPath(def))!;
             Directory.CreateDirectory(logDir);
 
+            // ВАЖНО: портабельный (embeddable) Python игнорирует PYTHONPATH —
+            // при наличии python*._pth sys.path строится только из этого файла.
+            // Поэтому модуль запускается через загрузчик, который добавляет
+            // appDir и .libs в sys.path вручную.
+            var launcher = Path.Combine(appDir, "_rp_launch.py");
+            File.WriteAllText(launcher, """
+                import os, sys
+                _root = os.path.dirname(os.path.abspath(__file__))
+                sys.path.insert(0, _root)
+                _libs = os.path.join(_root, ".libs")
+                if os.path.isdir(_libs):
+                    sys.path.insert(0, _libs)
+                import uvicorn
+                uvicorn.run(os.environ.get("MODULE_ENTRY", "service.api:app"),
+                            host="127.0.0.1",
+                            port=int(os.environ.get("MODULE_PORT", "8000")),
+                            log_level="info")
+                """);
+
             var psi = new ProcessStartInfo
             {
                 FileName = PythonExe,
-                Arguments = $"-m uvicorn {def.Entry} --host 127.0.0.1 --port {def.Port}",
+                Arguments = "_rp_launch.py",
                 WorkingDirectory = appDir,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             };
-            // appDir — чтобы импортировались scr/, service/; .libs — зависимости модуля
-            psi.Environment["PYTHONPATH"] = appDir + Path.PathSeparator + Path.Combine(appDir, ".libs");
+            psi.Environment["MODULE_ENTRY"] = def.Entry;
+            psi.Environment["MODULE_PORT"] = def.Port.ToString();
             var ver = GetInstalledVersion(def);
             if (ver != null) psi.Environment["MODULE_VERSION"] = ver;
 
