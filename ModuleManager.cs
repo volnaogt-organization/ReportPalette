@@ -297,9 +297,9 @@ namespace HotkeyApp
                 // при первой установке родительская папка модуля ещё не существует —
                 // без неё Directory.Move(staging, appDir) бросает DirectoryNotFoundException
                 Directory.CreateDirectory(ModuleDir(def));
-                if (Directory.Exists(oldDir)) Directory.Delete(oldDir, true);
-                if (Directory.Exists(appDir)) Directory.Move(appDir, oldDir);
-                Directory.Move(staging, appDir);
+                if (Directory.Exists(oldDir)) DirectoryOpWithRetry(() => Directory.Delete(oldDir, true));
+                if (Directory.Exists(appDir)) DirectoryOpWithRetry(() => Directory.Move(appDir, oldDir));
+                DirectoryOpWithRetry(() => Directory.Move(staging, appDir));
                 staging = null!;
 
                 try
@@ -310,16 +310,19 @@ namespace HotkeyApp
                 {
                     // откат на предыдущую версию
                     StopModule(def.Name);
-                    if (Directory.Exists(appDir)) Directory.Delete(appDir, true);
+                    if (Directory.Exists(appDir)) DirectoryOpWithRetry(() => Directory.Delete(appDir, true));
                     if (Directory.Exists(oldDir))
                     {
-                        Directory.Move(oldDir, appDir);
+                        DirectoryOpWithRetry(() => Directory.Move(oldDir, appDir));
                         await StartAndWaitAsync(def, progress, ct);
                     }
                     throw;
                 }
 
-                if (Directory.Exists(oldDir)) { try { Directory.Delete(oldDir, true); } catch { } }
+                if (Directory.Exists(oldDir))
+                {
+                    try { DirectoryOpWithRetry(() => Directory.Delete(oldDir, true)); } catch { }
+                }
                 return $"обновлён: {current ?? "—"} → {rel.Tag}";
             }
             finally
@@ -405,8 +408,69 @@ namespace HotkeyApp
             {
                 if (_children.TryGetValue(name, out var p))
                 {
-                    try { if (!p.HasExited) p.Kill(entireProcessTree: true); } catch { }
+                    try
+                    {
+                        if (!p.HasExited)
+                        {
+                            p.Kill(entireProcessTree: true);
+                            p.WaitForExit(10000); // ждём: файлы освобождаются не мгновенно
+                        }
+                    }
+                    catch { }
                     _children.Remove(name);
+                }
+            }
+            // процесс-сирота от прошлого запуска приложения: добиваем по порту
+            try { KillProcessOnPort(GetDef(name).Port); } catch { }
+        }
+
+        /// <summary>Завершает процесс, слушающий указанный порт (через netstat -ano).</summary>
+        private static void KillProcessOnPort(int port)
+        {
+            var psi = new ProcessStartInfo("netstat", "-ano")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true,
+            };
+            using var p = Process.Start(psi);
+            if (p == null) return;
+            var output = p.StandardOutput.ReadToEnd();
+            p.WaitForExit(5000);
+
+            var suffix = ":" + port;
+            foreach (var line in output.Split('\n'))
+            {
+                if (!line.Contains("LISTENING")) continue;
+                // TCP    127.0.0.1:8100    0.0.0.0:0    LISTENING    12345
+                var parts = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 5 && parts[1].EndsWith(suffix) &&
+                    int.TryParse(parts[^1], out var pid))
+                {
+                    try
+                    {
+                        using var proc = Process.GetProcessById(pid);
+                        if (!proc.HasExited)
+                        {
+                            proc.Kill(entireProcessTree: true);
+                            proc.WaitForExit(10000);
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+
+        /// <summary>Файловая операция с повторами — антивирус/индексация могут держать файлы.</summary>
+        private static void DirectoryOpWithRetry(Action op)
+        {
+            for (int attempt = 0; ; attempt++)
+            {
+                try { op(); return; }
+                catch (Exception ex) when (attempt < 9 &&
+                       (ex is IOException || ex is UnauthorizedAccessException))
+                {
+                    Thread.Sleep(500);
                 }
             }
         }
@@ -418,7 +482,15 @@ namespace HotkeyApp
             {
                 foreach (var p in _children.Values)
                 {
-                    try { if (!p.HasExited) p.Kill(entireProcessTree: true); } catch { }
+                    try
+                    {
+                        if (!p.HasExited)
+                        {
+                            p.Kill(entireProcessTree: true);
+                            p.WaitForExit(10000);
+                        }
+                    }
+                    catch { }
                 }
                 _children.Clear();
             }
