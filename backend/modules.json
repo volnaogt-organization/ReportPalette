@@ -1,0 +1,16 @@
+{
+  "modules": [
+    {
+      "name": "managerdatabase",
+      "display_name": "ManagerDataBase",
+      "description": "Обработка производственных отчётов 1010/2012 по спискам ДСЕ, годовой план, УП по очередям, ДСЕ по СЗ и извещениям",
+      "repo": "volnaogt-organization/ManagerDataBase",
+      "image": "ghcr.io/volnaogt-organization/managerdatabase",
+      "container": "reportpalette-mdb",
+      "service": "managerdatabase",
+      "port": 8000,
+      "legacy_routes": ["/run", "/annual_plan"],
+      "enabled": true
+    }
+  ]
+}

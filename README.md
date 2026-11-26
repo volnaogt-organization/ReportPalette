@@ -1,7 +1,23 @@
 # ReportPalette
 
-Клиент для системы [ManagerDataBase](https://github.com/volnaogt-organization/ManagerDataBase)
-(обработка производственных отчётов 1010/2012 по спискам ДСЕ).
+Модульная палитра отчётов. Каждый модуль —
+[ManagerDataBase](https://github.com/volnaogt-organization/ManagerDataBase)
+(обработка производственных отчётов 1010/2012 по спискам ДСЕ) и будущие
+программы — работает отдельным docker-контейнером со своим API.
+ReportPalette — оболочка над ними: шлюз + клиенты.
+
+```
+┌─────────────┐   ┌──────────────┐        ┌─────────────────────────┐
+│ WPF-клиент  │──►│              │───────►│ модуль managerdatabase  │
+└─────────────┘   │   Шлюз       │        │ (контейнер из GHCR)     │
+┌─────────────┐   │  (FastAPI)   │        └─────────────────────────┘
+│ Веб-палитра │──►│              │───────►│ будущий модуль …        │
+└─────────────┘   └──────┬───────┘        └─────────────────────────┘
+                         │ Docker socket
+                         ▼
+              обновление модулей из релизов
+              GitHub по кнопке в интерфейсе
+```
 
 Два варианта клиента:
 
@@ -16,27 +32,44 @@
 ## Запуск веб-версии (Docker)
 
 ```bash
-# 1. Клонировать ядро (один раз)
-git clone https://github.com/volnaogt-organization/ManagerDataBase backend/ManagerDataBase
-
-# 2. Собрать и поднять оба контейнера
 docker compose up -d --build
 
-# 3. Открыть
 http://localhost:8080        # палитра
-http://localhost:8000/docs   # Swagger API бэкенда
+http://localhost:8000/docs   # Swagger API шлюза
 ```
 
 С любого устройства в сети: `http://<адрес-сервера>:8080`.
-Данные Excel/БД, к которым обращается ManagerDataBase, должны быть доступны
-из контейнера бэкенда.
 
-## Локальная разработка без Docker
+Образ модуля ManagerDataBase берётся из GHCR
+(`ghcr.io/volnaogt-organization/managerdatabase:latest`). Если пакет приватный,
+один раз на сервере: `docker login ghcr.io`.
 
-- Бэкенд: см. `backend/README.md` (uvicorn на 127.0.0.1:8000).
-- Фронтенд: любой статический сервер для `frontend/`, но API-запросы идут на
-  `/api/...` — проще всего поднять через docker compose или открыть
-  `frontend/index.html` с поправкой адреса в `app.js`.
+## Обновление модулей
+
+В веб-палитре: ⚙ → «Модули» → видно текущую версию каждого модуля и последний
+релиз на GitHub; кнопка **«Обновить»** скачивает новый образ и перезапускает
+контейнер модуля.
+
+Релиз модуля делается в его репозитории тегом: `git tag v0.5.3 && git push origin v0.5.3` —
+GitHub Actions собирает образ в GHCR и создаёт Release
+(настройка для ManagerDataBase — в `module-kit/managerdatabase/`).
+
+## Разработка модуля из локальных исходников
+
+```bash
+git clone https://github.com/volnaogt-organization/ManagerDataBase backend/ManagerDataBase
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+## Добавление нового модуля
+
+1. Шаблон сервисной обёртки и релизного workflow: `module-kit/managerdatabase/`.
+2. Сервис в `docker-compose.yml` + запись в `backend/modules.json`.
+3. Подробности — в `backend/README.md`.
+
+## Локальная разработка шлюза без Docker
+
+См. `backend/README.md` (uvicorn на 127.0.0.1:8000).
 
 ## WPF-клиент
 
@@ -45,4 +78,6 @@ dotnet build
 bin\Debug\net10.0-windows\HotkeyApp.exe
 ```
 
-Хоткей по умолчанию Ctrl+Alt+Q, настройки — кнопка ⚙.
+Хоткей по умолчанию Ctrl+Alt+Q, настройки — кнопка ⚙. Клиент обращается
+к шлюзу (`BackendClient.cs`); старые маршруты `/run`, `/annual_plan`
+шлюз проксирует модулю ManagerDataBase.

@@ -143,6 +143,27 @@ button:hover { background: #f0f0f3; }
 .launch-list li a:hover { text-decoration: underline; }
 .launch-list li button { padding: 2px 8px; }
 
+.module-list { list-style: none; margin: 0 0 8px; padding: 0; }
+.module-list li {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 4px;
+  border-bottom: 1px solid #f0f0f2;
+}
+.module-list .m-name { font-weight: 600; }
+.module-list .m-ver { color: #8a8a8e; font-size: 12px; flex: 1; }
+.module-list .m-ver .badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 11px;
+  margin-left: 6px;
+}
+.module-list .m-ver .badge.new { background: #e8f7ec; color: #1d7a35; border: 1px solid #b7e4c4; }
+.module-list .m-ver .badge.down { background: #fdecea; color: #b3261e; border: 1px solid #f5c6c2; }
+.module-list li button { padding: 4px 10px; font-size: 13px; }
+.module-list li button:disabled { opacity: .45; cursor: default; }
+.module-list .empty { color: #8a8a8e; font-size: 13px; }
+
 .preview {
   background: #f6f6f8;
   border: 1px solid #e0e0e4;

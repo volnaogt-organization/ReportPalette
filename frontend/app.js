@@ -262,12 +262,20 @@
     fetch('/api/health')
       .then(function (r) { return r.json(); })
       .then(function (h) {
-        if (h.core_imported) {
-          healthDot.className = 'dot dot-ok';
-          healthText.textContent = 'бэкенд онлайн';
+        if (h.status === 'ok' && h.gateway) {
+          var down = Object.keys(h.modules || {}).filter(function (k) { return h.modules[k] !== 'up'; });
+          if (down.length) {
+            healthDot.className = 'dot dot-bad';
+            healthText.textContent = 'модули недоступны: ' + down.join(', ');
+          } else {
+            healthDot.className = 'dot dot-ok';
+            healthText.textContent = h.modules_total
+              ? 'онлайн, модулей: ' + h.modules_up + '/' + h.modules_total
+              : 'бэкенд онлайн';
+          }
         } else {
           healthDot.className = 'dot dot-bad';
-          healthText.textContent = 'бэкенд без ядра ManagerDataBase';
+          healthText.textContent = 'бэкенд в degraded-режиме';
         }
       })
       .catch(function () {
@@ -288,6 +296,7 @@
     renderLaunchList();
     defaultProgramSelect.value = String(settings.defaultProgram);
     modal.classList.remove('hidden');
+    loadModules();
   }
   function closeSettings() { modal.classList.add('hidden'); }
 
@@ -325,6 +334,117 @@
     nameEl.value = ''; urlEl.value = '';
     saveSettings(); renderLaunchList();
   });
+
+  // ---------- модули ----------
+
+  var moduleList = document.getElementById('moduleList');
+  var updateAllBtn = document.getElementById('updateAllBtn');
+
+  function renderModules(modules) {
+    moduleList.innerHTML = '';
+    if (!modules.length) {
+      var empty = document.createElement('li');
+      empty.className = 'empty';
+      empty.textContent = 'Модули не настроены (backend/modules.json)';
+      moduleList.appendChild(empty);
+      return;
+    }
+    modules.forEach(function (m) {
+      var li = document.createElement('li');
+
+      var name = document.createElement('span');
+      name.className = 'm-name';
+      name.textContent = m.display_name || m.name;
+      name.title = m.description || '';
+
+      var ver = document.createElement('span');
+      ver.className = 'm-ver';
+      var text = 'текущая: ' + (m.version_running || '—') +
+                 ' · релиз: ' + (m.version_latest || (m.release_error ? 'ошибка' : 'нет'));
+      ver.textContent = text;
+
+      if (m.status !== 'up') {
+        var b = document.createElement('span');
+        b.className = 'badge down';
+        b.textContent = m.status === 'down' ? 'остановлен' : 'не найден';
+        ver.appendChild(b);
+      } else if (m.update_available) {
+        var b2 = document.createElement('span');
+        b2.className = 'badge new';
+        b2.textContent = 'есть обновление';
+        ver.appendChild(b2);
+      }
+
+      var btn = document.createElement('button');
+      btn.textContent = m.update_available ? 'Обновить' : 'Переустановить';
+      btn.disabled = m.status !== 'up' && m.status !== 'down';
+      btn.title = m.release_url || '';
+      btn.addEventListener('click', function () { updateModule(m.name, btn); });
+
+      li.appendChild(name);
+      li.appendChild(ver);
+      li.appendChild(btn);
+      moduleList.appendChild(li);
+    });
+  }
+
+  function loadModules() {
+    moduleList.innerHTML = '<li class="empty">Проверка модулей и релизов…</li>';
+    fetch('/api/modules')
+      .then(function (r) { return r.json(); })
+      .then(function (d) { renderModules(d.modules || []); })
+      .catch(function (e) {
+        moduleList.innerHTML = '<li class="empty">Не удалось получить список модулей: ' + e.message + '</li>';
+      });
+  }
+
+  function setModulesBusy(busy) {
+    updateAllBtn.disabled = busy;
+    moduleList.querySelectorAll('button').forEach(function (b) { b.disabled = busy; });
+  }
+
+  function afterUpdate(res) {
+    if (res.status === 'updated') {
+      toast('Модуль ' + res.module + ' обновлён: ' + (res.from || '—') + ' → ' + res.to);
+    } else if (res.status === 'already_latest') {
+      toast('Модуль ' + res.module + ' уже последней версии (' + res.version + ')');
+    } else {
+      toast('Модуль ' + res.module + ': ' + res.status, true);
+    }
+    loadModules();
+    checkHealth();
+  }
+
+  function updateModule(name, btn) {
+    setModulesBusy(true);
+    if (btn) btn.textContent = 'Обновление…';
+    toast('Обновление модуля ' + name + ': скачивание образа, это может занять несколько минут…');
+    fetch('/api/modules/' + encodeURIComponent(name) + '/update', { method: 'POST' })
+      .then(function (r) { return r.json().then(function (body) { return { ok: r.ok, body: body }; }); })
+      .then(function (res) {
+        if (res.ok) afterUpdate(res.body);
+        else { toast('Ошибка обновления: ' + (res.body.detail || 'неизвестная'), true); loadModules(); }
+      })
+      .catch(function (e) { toast('Шлюз недоступен: ' + e.message, true); loadModules(); })
+      .finally(function () { setModulesBusy(false); });
+  }
+
+  document.getElementById('refreshModulesBtn').addEventListener('click', loadModules);
+
+  updateAllBtn.addEventListener('click', function () {
+    setModulesBusy(true);
+    toast('Обновление всех модулей…');
+    fetch('/api/modules/update', { method: 'POST' })
+      .then(function (r) { return r.json().then(function (body) { return { ok: r.ok, body: body }; }); })
+      .then(function (res) {
+        if (res.ok && Array.isArray(res.body.results)) res.body.results.forEach(afterUpdate);
+        else { toast('Ошибка обновления: ' + (res.body.detail || 'неизвестная'), true); loadModules(); }
+      })
+      .catch(function (e) { toast('Шлюз недоступен: ' + e.message, true); loadModules(); })
+      .finally(function () { setModulesBusy(false); });
+  });
+
+  // ---------- настройки (продолжение) ----------
 
   defaultProgramSelect.addEventListener('change', function () {
     settings.defaultProgram = Number(defaultProgramSelect.value);
