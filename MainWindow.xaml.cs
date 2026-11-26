@@ -36,6 +36,7 @@ namespace HotkeyApp
         private HwndSource _source;
         private DateTime _lastActivateTime = DateTime.MinValue;
         private SettingsWindow? _settingsWindow;
+        private TrayIconService? _tray;
 
         private static readonly (string Title, string Text)[] BuiltInCommands =
         {
@@ -52,17 +53,27 @@ namespace HotkeyApp
             _source = HwndSource.FromHwnd(handle);
             _source.AddHook(HwndHook);
 
+            ApplyWindowModeFromSettings();
+
+            // Значок в трее: доступ к палитре, даже если хоткей занят/не зарегистрировался
+            _tray = new TrayIconService();
+            _tray.Install(ShowPalette, OpenSettings, () => Close());
+
             bool hotkeyRegistered = ReregisterHotkey();
             if (!hotkeyRegistered)
             {
+                _tray.ShowBalloon(
+                    "ReportPalette",
+                    $"Хоткей {_settings.HotkeyModifiers}+{_settings.HotkeyKey} занят другой программой.\n" +
+                    "Палитру можно открыть двойным кликом по значку в трее; " +
+                    "другую комбинацию — в настройках (⚙).");
                 MessageBox.Show(
                     $"Не удалось зарегистрировать хоткей " +
                     $"{_settings.HotkeyModifiers}+{_settings.HotkeyKey}.\n" +
-                    "Возможно, комбинация занята. Выберите другую в настройках (⚙).",
+                    "Возможно, комбинация занята. Выберите другую в настройках (⚙) " +
+                    "или открывайте палитру двойным кликом по значку в трее.",
                     "Хоткей", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-
-            ApplyWindowModeFromSettings();
 
             // Прячем окно в фон только если хоткей зарегистрирован —
             // иначе пользователь не сможет открыть окно и выбрать другую комбинацию.
@@ -138,6 +149,7 @@ namespace HotkeyApp
             UnregisterHotKey(handle, HOTKEY_ID);
             _source?.RemoveHook(HwndHook);
             _settingsWindow?.Close();
+            _tray?.Dispose();
             ModuleManager.StopAll(); // гасим локальные сервисы модулей
             base.OnClosed(e);
         }
@@ -160,7 +172,10 @@ namespace HotkeyApp
             return IntPtr.Zero;
         }
 
-        private void OnHotkeyPressed()
+        private void OnHotkeyPressed() => ShowPalette();
+
+        /// <summary>Показывает палитру и переносит фокус в поле ввода (хоткей, трей).</summary>
+        public void ShowPalette()
         {
             _lastActivateTime = DateTime.Now;
 
