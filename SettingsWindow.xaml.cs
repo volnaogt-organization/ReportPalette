@@ -51,30 +51,8 @@ namespace HotkeyApp
             ModuleList.ItemsSource = _moduleRows;
 
             HotkeyBox.Text = $"{_settings.HotkeyModifiers}+{_settings.HotkeyKey}";
-            TopmostModeRadio.IsChecked = _settings.Topmost;
-            NormalModeRadio.IsChecked = !_settings.Topmost;
 
             Loaded += async (_, _) => await RefreshModulesAsync();
-        }
-
-        // ---------------- Режим окна палитры ----------------
-
-        private void WindowMode_Changed(object sender, RoutedEventArgs e)
-        {
-            ApplyWindowMode();
-        }
-
-        private void ApplyWindowMode()
-        {
-            if (NormalModeRadio == null || TopmostModeRadio == null) return; // до InitializeComponent
-
-            bool topmost = TopmostModeRadio.IsChecked == true;
-            _settings.Topmost = topmost;
-            _settings.StayOpenOnLostFocus = NormalModeRadio.IsChecked == true;
-
-            // Сначала сохраняем и обновляем конфиг палитры, затем применяем режим
-            SaveSettings();
-            Palette?.ApplyWindowModeFromSettings();
         }
 
         // ---------------- Хоткей ----------------
@@ -227,10 +205,8 @@ namespace HotkeyApp
                 _launchItems.Clear();
                 foreach (var i in _settings.LaunchItems) _launchItems.Add(i);
 
-                TopmostModeRadio.IsChecked = _settings.Topmost;
-                NormalModeRadio.IsChecked = !_settings.Topmost;
-                ApplyWindowMode();
                 Palette?.ReloadSettings();
+                Palette?.ApplyWindowModeFromSettings();
                 Palette?.ReregisterHotkey();
 
                 MessageBox.Show("Настройки применены.", "Перенос настроек",
@@ -373,6 +349,7 @@ namespace HotkeyApp
             {
                 ModulesBox.IsEnabled = true;
                 await RefreshModulesAsync();
+                Palette?.ReloadModuleCommands(); // команды могли измениться в новой версии модуля
             }
         }
 
@@ -394,6 +371,7 @@ namespace HotkeyApp
             {
                 ModulesBox.IsEnabled = true;
                 await RefreshModulesAsync();
+                Palette?.ReloadModuleCommands();
             }
         }
 

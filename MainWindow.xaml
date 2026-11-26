@@ -5,47 +5,76 @@
         Width="480"
         SizeToContent="Height"
         WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
         Background="White"
         Deactivated="Window_Deactivated">
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-        </Grid.ColumnDefinitions>
+    <!-- Рамка вместо стандартного заголовка окна; перетаскивание — за пустой фон -->
+    <Border x:Name="RootBorder" BorderBrush="#BBBBBB" BorderThickness="1"
+            MouseLeftButtonDown="RootBorder_MouseLeftButtonDown">
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-        <!-- Ввод ДСЕ / команд + выпадающий список (как PowerToys Command Palette) -->
-        <Grid Grid.Row="0" Grid.Column="0">
-            <TextBox x:Name="MyTextBox"
-                     Text="Введите текст здесь..."
+            <!-- Ввод ДСЕ / команд -->
+            <TextBox x:Name="MyTextBox" Grid.Row="0" Grid.Column="0"
+                     Text="Введите команду или ДСЕ через $..."
                      Height="30" Padding="5"
                      PreviewKeyDown="MyTextBox_PreviewKeyDown"
                      TextChanged="MyTextBox_TextChanged"/>
-            <Popup x:Name="CommandsPopup"
-                   PlacementTarget="{Binding ElementName=MyTextBox}"
-                   Placement="Bottom"
-                   StaysOpen="False"
-                   AllowsTransparency="True">
-                <Border Background="White" BorderBrush="#CCCCCC" BorderThickness="1" Width="430">
-                    <ListBox x:Name="CommandsList"
-                             MaxHeight="200"
-                             MouseUp="CommandsList_MouseUp"
-                             PreviewKeyDown="CommandsList_PreviewKeyDown"/>
-                </Border>
-            </Popup>
+
+            <!-- Кнопка выбора файла: видна, пока выбрана команда с вводом «путь к файлу» -->
+            <Button x:Name="BrowseFileButton" Grid.Row="0" Grid.Column="1"
+                    Content="📂" Width="32" Height="30" Margin="5,0,0,0"
+                    Visibility="Collapsed"
+                    ToolTip="Открыть файл"
+                    Click="BrowseFileButton_Click"/>
+
+            <!-- Пин: закрепить палитру поверх окон (иначе прячется при клике вне её) -->
+            <Button x:Name="PinButton" Grid.Row="0" Grid.Column="2"
+                    Content="📍" Width="32" Height="30" Margin="5,0,0,0"
+                    ToolTip="Закрепить палитру поверх окон"
+                    Click="PinButton_Click"/>
+
+            <!-- Кнопка открытия окна настроек -->
+            <Button Grid.Row="0" Grid.Column="3" Content="⚙" Width="32" Height="30"
+                    Margin="5,0,0,0" ToolTip="Настройки"
+                    Click="SettingsButton_Click"/>
+
+            <!-- Постоянный список команд: последние/частые, фильтруется по вводу -->
+            <Border x:Name="CommandsPanel" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4"
+                    BorderBrush="#DDDDDD" BorderThickness="0,1,0,0" Margin="0,6,0,0" Padding="0,4,0,0">
+                <ListBox x:Name="CommandsList"
+                         MaxHeight="220" BorderThickness="0"
+                         DisplayMemberPath="Label"
+                         MouseUp="CommandsList_MouseUp"
+                         PreviewKeyDown="CommandsList_PreviewKeyDown"/>
+            </Border>
+
+            <!-- Статус модулей + кнопка открытия файла результата после выполнения -->
+            <Grid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Margin="2,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText" Grid.Column="0"
+                           FontSize="10" Foreground="Gray"
+                           TextWrapping="Wrap" VerticalAlignment="Center"/>
+                <Button x:Name="OpenResultButton" Grid.Column="1"
+                        Content="📄 Открыть результат" FontSize="10" Padding="6,2"
+                        Margin="6,0,0,0" Visibility="Collapsed"
+                        ToolTip="Открыть файл результата в Excel"
+                        Click="OpenResultButton_Click"/>
+            </Grid>
+
         </Grid>
-
-        <!-- Кнопка открытия окна настроек -->
-        <Button Grid.Row="0" Grid.Column="1" Content="⚙" Width="32" Height="30"
-                Margin="5,0,0,0" ToolTip="Настройки"
-                Click="SettingsButton_Click"/>
-
-        <!-- Статус модулей: виден при первом скачивании/запуске и при ошибках -->
-        <TextBlock x:Name="StatusText" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                   FontSize="10" Foreground="Gray" Margin="2,4,0,0"
-                   TextWrapping="Wrap"/>
-    </Grid>
+    </Border>
 </Window>
