@@ -285,6 +285,9 @@ namespace HotkeyApp
                 StopModule(def.Name);
                 var appDir = ModuleAppDir(def);
                 var oldDir = appDir + ".old";
+                // при первой установке родительская папка модуля ещё не существует —
+                // без неё Directory.Move(staging, appDir) бросает DirectoryNotFoundException
+                Directory.CreateDirectory(ModuleDir(def));
                 if (Directory.Exists(oldDir)) Directory.Delete(oldDir, true);
                 if (Directory.Exists(appDir)) Directory.Move(appDir, oldDir);
                 Directory.Move(staging, appDir);
