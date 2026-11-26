@@ -6,6 +6,10 @@
         SizeToContent="Height"
         WindowStartupLocation="CenterScreen"
         Background="White"
+        AllowDrop="True"
+        DragOver="Window_DragOver"
+        DragLeave="Window_DragLeave"
+        Drop="Window_Drop"
         Deactivated="Window_Deactivated">
     <Grid Margin="10">
         <Grid.ColumnDefinitions>

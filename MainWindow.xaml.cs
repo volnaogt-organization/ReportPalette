@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -15,6 +16,9 @@ namespace HotkeyApp
     /// хоткеем, ищет по встроенным командам и приложениям из панели запуска,
     /// отправляет ДСЕ на бэкенд. Все настройки — в отдельном окне SettingsWindow
     /// (кнопка ⚙ или команда «Настройки»).
+    ///
+    /// Drag-and-drop: перенос файла/папки с рабочего стола или из Проводника
+    /// на окно палитры открывает подтверждение выдачи доступа к директории.
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -196,6 +200,10 @@ namespace HotkeyApp
 
         private void Window_Deactivated(object sender, EventArgs e)
         {
+            // Не прячем палитру, пока идёт перенос файла (drag-and-drop)
+            if (_isDragging)
+                return;
+
             // Не прячем палитру, пока открыто окно настроек
             if (_settingsWindow != null && _settingsWindow.IsVisible)
                 return;
@@ -211,6 +219,55 @@ namespace HotkeyApp
             CommandsPopup.IsOpen = false;
             this.Visibility = Visibility.Hidden;
             this.ShowInTaskbar = false;
+        }
+
+        // ---------------- Drag-and-drop: доступ к директории ----------------
+
+        private bool _isDragging; // чтобы окно не пряталось во время переноса
+
+        private void Window_DragOver(object sender, DragEventArgs e)
+        {
+            _isDragging = true;
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+                ? DragDropEffects.Copy
+                : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void Window_DragLeave(object sender, DragEventArgs e)
+        {
+            // Перенос ушёл за пределы окна без Drop — сбрасываем флаг,
+            // иначе окно перестанет прятаться при потере фокуса.
+            _isDragging = false;
+        }
+
+        private void Window_Drop(object sender, DragEventArgs e)
+        {
+            _isDragging = false;
+            if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+
+            var paths = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (paths == null || paths.Length == 0) return;
+
+            // файл -> его директория, папка -> сама папка
+            string dir = paths.Length == 1
+                ? (Directory.Exists(paths[0]) ? paths[0] : Path.GetDirectoryName(paths[0]) ?? "")
+                : Path.GetDirectoryName(paths[0]) ?? "";
+
+            if (dir.Length == 0 || !Directory.Exists(dir)) return;
+
+            // Всплывающее окно-подтверждение — «даёт доступ» к директории
+            var result = MessageBox.Show(
+                $"Выдать доступ приложению к директории?\n\n{dir}",
+                "Разрешить доступ", MessageBoxButton.OKCancel,
+                MessageBoxImage.Question, MessageBoxResult.Cancel);
+
+            if (result != MessageBoxResult.OK) return;
+
+            _settings.AllowedDirectory = dir;
+            SettingsService.Save(_settings);
+            MessageBox.Show($"Доступ к директории выдан:\n{dir}",
+                            "ReportPalette", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         // ---------------- Выпадающий список команд + выполнение ----------------
@@ -364,7 +421,6 @@ namespace HotkeyApp
                                 "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
-
 
         public static void LaunchProcess(string path, string arguments)
         {

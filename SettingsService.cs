@@ -79,6 +79,9 @@ namespace HotkeyApp
     /// <summary>Настройки пользователя, сохраняемые в JSON-файл.</summary>
     public class AppSettings
     {
+        /// <summary>Директория, доступ к которой выдан через drag-and-drop.</summary>
+        [JsonPropertyName("allowedDirectory")] public string AllowedDirectory { get; set; } = "";
+
         /// <summary>Версия схемы конфига. Отсутствие поля при загрузке = v1.</summary>
         [JsonPropertyName("version")] public int Version { get; set; } = 2;
         [JsonPropertyName("backendUrl")] public string BackendUrl { get; set; } = "http://127.0.0.1:8000/";
