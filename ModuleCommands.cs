@@ -26,6 +26,9 @@ namespace HotkeyApp
         [JsonPropertyName("endpoint")] public string Endpoint { get; set; } = "";
         [JsonPropertyName("payload")] public Dictionary<string, JsonElement>? Payload { get; set; }
 
+        /// <summary>Имя файла результата в папке модуля (напр. отчёт Excel) — палитра покажет кнопку «Открыть результат».</summary>
+        [JsonPropertyName("result_file")] public string? ResultFile { get; set; }
+
         /// <summary>Команда по умолчанию для «сырого» ввода ДСЕ без выбора команды.</summary>
         [JsonPropertyName("default")] public bool Default { get; set; }
 

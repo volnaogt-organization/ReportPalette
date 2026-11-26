@@ -16,7 +16,6 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -60,16 +59,22 @@
                          PreviewKeyDown="CommandsList_PreviewKeyDown"/>
             </Border>
 
-            <!-- Статус модулей: виден при первом скачивании/запуске и при ошибках -->
-            <TextBlock x:Name="StatusText" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4"
-                       FontSize="10" Foreground="Gray" Margin="2,4,0,0"
-                       TextWrapping="Wrap"/>
+            <!-- Статус модулей + кнопка открытия файла результата после выполнения -->
+            <Grid Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Margin="2,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText" Grid.Column="0"
+                           FontSize="10" Foreground="Gray"
+                           TextWrapping="Wrap" VerticalAlignment="Center"/>
+                <Button x:Name="OpenResultButton" Grid.Column="1"
+                        Content="📄 Открыть результат" FontSize="10" Padding="6,2"
+                        Margin="6,0,0,0" Visibility="Collapsed"
+                        ToolTip="Открыть файл результата в Excel"
+                        Click="OpenResultButton_Click"/>
+            </Grid>
 
-            <!-- Открыть Excel-результат последней выполненной команды -->
-            <Button x:Name="OpenResultButton" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4"
-                    Content="📄 Открыть результат" Height="26" Margin="0,4,0,0"
-                    Visibility="Collapsed"
-                    Click="OpenResultButton_Click"/>
         </Grid>
     </Border>
 </Window>

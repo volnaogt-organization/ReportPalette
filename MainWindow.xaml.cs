@@ -727,13 +727,15 @@ namespace HotkeyApp
             ModuleCommand cmd, IReadOnlyList<string>? dseList, string? filePath)
         {
             StatusText.Text = $"[{cmd.Title}] выполняется…";
+            OpenResultButton.Visibility = Visibility.Collapsed;
+            _lastResultFile = null;
             try
             {
                 var client = ClientForModule(cmd.ModuleName);
                 var json = await client.PostAsync(cmd.Endpoint, cmd.BuildPayload(dseList, filePath));
                 StatusText.Text = $"[{cmd.Title}] {DescribeResult(json)}";
                 MyTextBox.Text = "";
-                UpdateResultButton(cmd.ModuleName);
+                UpdateResultButton(cmd);
             }
             catch (Exception ex)
             {
@@ -751,13 +753,18 @@ namespace HotkeyApp
         /// <summary>Excel-файл, который модуль пишет в свой рабочий каталог (как cmd_body).</summary>
         private string? _lastResultFile;
 
-        /// <summary>Показывает кнопку «Открыть результат», если модуль записал Excel-отчёт.</summary>
-        private void UpdateResultButton(string moduleName)
+        /// <summary>Показывает кнопку «Открыть результат», если модуль записал Excel-отчёт.
+        /// Имя файла модуль объявляет в module.json (result_file); без объявления —
+        /// стандартный result_manager_database_reports.xlsx.</summary>
+        private void UpdateResultButton(ModuleCommand cmd)
         {
-            var dir = ModuleManager.GetInstalledAppDir(moduleName);
-            var file = dir == null ? null
-                : System.IO.Path.Combine(dir, "result_manager_database_reports.xlsx");
+            var dir = ModuleManager.GetInstalledAppDir(cmd.ModuleName);
+            var fileName = string.IsNullOrEmpty(cmd.ResultFile)
+                ? "result_manager_database_reports.xlsx"
+                : cmd.ResultFile;
+            var file = dir == null ? null : System.IO.Path.Combine(dir, fileName);
             _lastResultFile = file != null && System.IO.File.Exists(file) ? file : null;
+            OpenResultButton.ToolTip = _lastResultFile ?? "";
             OpenResultButton.Visibility = _lastResultFile != null
                 ? Visibility.Visible
                 : Visibility.Collapsed;
