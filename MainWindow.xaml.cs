@@ -43,6 +43,8 @@ namespace HotkeyApp
         /// <summary>Пользователь навигировал по списку стрелками — Enter берёт выбранный пункт.</summary>
         private bool _listNavigated;
 
+        private bool _isDragging; // чтобы окно не пряталось во время переноса файла (drag-and-drop)
+
         [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
@@ -324,6 +326,10 @@ namespace HotkeyApp
 
         private void Window_Deactivated(object sender, EventArgs e)
         {
+            // Не прячем палитру, пока идёт перенос файла (drag-and-drop)
+            if (_isDragging)
+                return;
+
             // Не прячем палитру, пока открыт модальный диалог или окно настроек
             if (_modalOpen)
                 return;
@@ -339,6 +345,59 @@ namespace HotkeyApp
                 return;
 
             HidePalette();
+        }
+
+        // ---------------- Drag-and-drop: выдача доступа к директории ----------------
+
+        private void Window_DragOver(object sender, DragEventArgs e)
+        {
+            _isDragging = true;
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+                ? DragDropEffects.Copy
+                : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void Window_DragLeave(object sender, DragEventArgs e)
+        {
+            // Перенос ушёл за пределы окна без Drop — сбрасываем флаг,
+            // иначе окно перестанет прятаться при потере фокуса.
+            _isDragging = false;
+        }
+
+        private void Window_Drop(object sender, DragEventArgs e)
+        {
+            _isDragging = false;
+            if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+
+            var paths = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (paths == null || paths.Length == 0) return;
+
+            // файл -> его директория, папка -> сама папка
+            string dir = paths.Length == 1
+                ? (Directory.Exists(paths[0]) ? paths[0] : Path.GetDirectoryName(paths[0]) ?? "")
+                : Path.GetDirectoryName(paths[0]) ?? "";
+
+            if (dir.Length == 0 || !Directory.Exists(dir)) return;
+
+            // Всплывающее окно-подтверждение — «даёт доступ» к директории
+            _modalOpen = true; // диалог крадёт фокус — палитру не прячем
+            try
+            {
+                var result = MessageBox.Show(
+                    $"Выдать доступ приложению к директории?\n\n{dir}",
+                    "Разрешить доступ", MessageBoxButton.OKCancel,
+                    MessageBoxImage.Question, MessageBoxResult.Cancel);
+
+                if (result != MessageBoxResult.OK) return;
+
+                _settings.AllowedDirectory = dir;
+                SettingsService.Save(_settings);
+                StatusText.Text = $"Доступ к директории выдан: {dir}";
+                MessageBox.Show($"Доступ к директории выдан:\n{dir}",
+                                "ReportPalette", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            finally { _modalOpen = false; }
         }
 
         // ---------------- Список команд + выполнение ----------------
