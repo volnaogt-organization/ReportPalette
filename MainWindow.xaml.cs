@@ -61,6 +61,7 @@ namespace HotkeyApp
         private DateTime _lastActivateTime = DateTime.MinValue;
         private SettingsWindow? _settingsWindow;
         private TrayIconService? _tray;
+        private IslandWindow? _island; // таблетка сверху экрана (drag-and-drop отчётов)
 
         public MainWindow()
         {
@@ -71,6 +72,7 @@ namespace HotkeyApp
             _source.AddHook(HwndHook);
 
             ApplyWindowModeFromSettings();
+            ApplyIslandFromSettings(); // остров: таблетка сверху экрана (вкл/выкл — в настройках)
 
             // Значок в трее: доступ к палитре, даже если хоткей занят/не зарегистрировался
             _tray = new TrayIconService();
@@ -155,6 +157,7 @@ namespace HotkeyApp
         public void ReloadModuleCommands()
         {
             _moduleCommands = ModuleCatalog.LoadCommands();
+            _island?.RefreshCommands(); // и остров видит те же команды
             if (IsLoaded) UpdateCommandPalette();
         }
 
@@ -197,6 +200,7 @@ namespace HotkeyApp
             UnregisterHotKey(handle, HOTKEY_ID);
             _source?.RemoveHook(HwndHook);
             _settingsWindow?.Close();
+            _island?.Close();
             _tray?.Dispose();
             ModuleManager.StopAll(); // гасим локальные сервисы модулей
             base.OnClosed(e);
@@ -273,6 +277,23 @@ namespace HotkeyApp
             UpdatePinButton();
         }
 
+        /// <summary>Показывает или убирает остров по настройке (переключатель в ⚙).</summary>
+        public void ApplyIslandFromSettings()
+        {
+            if (_settings.IslandEnabled)
+            {
+                if (_island == null || !_island.IsLoaded)
+                    _island = new IslandWindow(this);
+                if (!_island.IsVisible)
+                    _island.Show();
+            }
+            else
+            {
+                _island?.Close();
+                _island = null;
+            }
+        }
+
         // ---------------- Пин (закрепить поверх окон) ----------------
 
         private void PinButton_Click(object sender, RoutedEventArgs e)
@@ -296,7 +317,7 @@ namespace HotkeyApp
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e) => OpenSettings();
 
-        private void OpenSettings()
+        public void OpenSettings()
         {
             if (_settingsWindow == null || !_settingsWindow.IsLoaded)
             {

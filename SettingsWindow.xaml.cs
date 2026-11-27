@@ -51,6 +51,7 @@ namespace HotkeyApp
             ModuleList.ItemsSource = _moduleRows;
 
             HotkeyBox.Text = $"{_settings.HotkeyModifiers}+{_settings.HotkeyKey}";
+            IslandEnabledBox.IsChecked = _settings.IslandEnabled;
 
             Loaded += async (_, _) =>
             {
@@ -162,6 +163,15 @@ namespace HotkeyApp
                     "Выберите другую.",
                     "Хоткей", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+        }
+
+        // ---------------- Остров ----------------
+
+        private void IslandEnabledBox_Changed(object sender, RoutedEventArgs e)
+        {
+            _settings.IslandEnabled = IslandEnabledBox.IsChecked == true;
+            SaveSettings();
+            Palette?.ApplyIslandFromSettings();
         }
 
         // ---------------- Панель запуска ----------------

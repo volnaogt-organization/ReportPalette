@@ -82,6 +82,13 @@ namespace HotkeyApp
         /// <summary>Директория, доступ к которой выдан через drag-and-drop.</summary>
         [JsonPropertyName("allowedDirectory")] public string AllowedDirectory { get; set; } = "";
 
+        /// <summary>Показывать «остров» — таблетку сверху экрана для drag-and-drop отчётов.</summary>
+        [JsonPropertyName("islandEnabled")] public bool IslandEnabled { get; set; } = true;
+
+        /// <summary>Сохранённая позиция острова (null — по центру сверху).</summary>
+        [JsonPropertyName("islandLeft")] public double? IslandLeft { get; set; }
+        [JsonPropertyName("islandTop")] public double? IslandTop { get; set; }
+
         /// <summary>Версия схемы конфига. Отсутствие поля при загрузке = v1.</summary>
         [JsonPropertyName("version")] public int Version { get; set; } = 2;
         [JsonPropertyName("backendUrl")] public string BackendUrl { get; set; } = "http://127.0.0.1:8000/";
@@ -210,6 +217,7 @@ namespace HotkeyApp
             {
                 payload["topmost"] = settings.Topmost;
                 payload["stayOpenOnLostFocus"] = settings.StayOpenOnLostFocus;
+                payload["islandEnabled"] = settings.IslandEnabled;
             }
             if (sectionSet.Contains(SettingsSections.Launch))
                 payload["launchItems"] = JsonSerializer.SerializeToNode(settings.LaunchItems);
@@ -374,6 +382,8 @@ namespace HotkeyApp
                     settings.Topmost = tmB;
                 if (p["stayOpenOnLostFocus"] is JsonValue so && so.TryGetValue<bool>(out var soB))
                     settings.StayOpenOnLostFocus = soB;
+                if (p["islandEnabled"] is JsonValue ie && ie.TryGetValue<bool>(out var ieB))
+                    settings.IslandEnabled = ieB;
                 if (p["backendUrl"] is JsonValue bu && bu.TryGetValue<string>(out var buS))
                     settings.BackendUrl = buS;
                 if (p["defaultProgram"] is JsonValue dp && dp.TryGetValue<int>(out var dpI))

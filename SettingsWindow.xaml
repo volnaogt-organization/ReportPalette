@@ -35,6 +35,10 @@
                 <TextBlock Text=" (кликните и нажмите клавиши)"
                            VerticalAlignment="Center" Foreground="Gray" FontSize="10" Margin="5,0,0,0"/>
             </StackPanel>
+            <CheckBox x:Name="IslandEnabledBox"
+                      Content="Остров сверху экрана (перенос Excel/файлов — отчёты из таблетки)"
+                      Margin="0,8,0,0"
+                      Checked="IslandEnabledBox_Changed" Unchecked="IslandEnabledBox_Changed"/>
         </StackPanel>
 
         <!-- Панель запуска: добавленные приложения + кнопка добавления -->

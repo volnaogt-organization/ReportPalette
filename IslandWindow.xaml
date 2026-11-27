@@ -1,0 +1,46 @@
+<Window x:Class="HotkeyApp.IslandWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ReportPalette Island"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="False"
+        SizeToContent="WidthAndHeight"
+        AllowDrop="True"
+        DragOver="Window_DragOver" DragLeave="Window_DragLeave" Drop="Window_Drop">
+    <!-- Таблетка-«остров»: свёрнутая — статус; развёрнутая — действия с файлом,
+         прогресс выполнения и кнопка результата -->
+    <Border x:Name="Pill" CornerRadius="18" Padding="14,7"
+            Background="#E6252525" BorderBrush="#3AFFFFFF" BorderThickness="1"
+            MouseLeftButtonDown="Pill_MouseLeftButtonDown"
+            MouseLeftButtonUp="Pill_MouseLeftButtonUp"
+            MouseMove="Pill_MouseMove">
+        <StackPanel>
+            <!-- Свернутое состояние -->
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="DotText" Text="●" Foreground="#FF4CAF50"
+                           FontSize="10" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                <TextBlock Text="ReportPalette" Foreground="White" FontSize="13"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="IdleHintText" Text="  ·  перетащите сюда Excel с ДСЕ"
+                           Foreground="#80FFFFFF" FontSize="11" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Развёрнутое состояние -->
+            <StackPanel x:Name="ExpandedPanel" Visibility="Collapsed" Margin="2,8,2,2">
+                <TextBlock x:Name="StatusText" Foreground="White" FontSize="12"
+                           TextWrapping="Wrap" MaxWidth="420"/>
+                <StackPanel x:Name="ActionPanel" Margin="0,6,0,0"/>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button x:Name="OpenResultButton" Content="📄 Открыть результат"
+                            FontSize="11" Padding="8,3" Margin="0,0,6,0"
+                            Visibility="Collapsed" Click="OpenResultButton_Click"/>
+                    <Button Content="⌨ Палитра" FontSize="11" Padding="8,3" Margin="0,0,6,0"
+                            ToolTip="Открыть палитру команд (Ctrl+Alt+Q)"
+                            Click="PaletteButton_Click"/>
+                    <Button Content="⚙" FontSize="11" Padding="8,3"
+                            ToolTip="Настройки" Click="SettingsButton_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>
