@@ -7,7 +7,9 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace HotkeyApp
@@ -40,6 +42,9 @@ namespace HotkeyApp
         private Point _pressPoint;
         private bool _dragMoved;
         private bool _userPositioned; // есть сохранённая позиция — не центрируем
+
+        /// <summary>Идёт вытаскивание файла с полки — остров свой же drop не принимает.</summary>
+        private bool _shelfDragOut;
 
         public IslandWindow()
         {
@@ -161,6 +166,13 @@ namespace HotkeyApp
 
         private void Window_DragOver(object sender, DragEventArgs e)
         {
+            if (_shelfDragOut) // свой же файл с полки тащат наружу — не принимаем
+            {
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
+                return;
+            }
+
             bool files = e.Data.GetDataPresent(DataFormats.FileDrop);
             e.Effects = files ? DragDropEffects.Copy : DragDropEffects.None;
             e.Handled = true;
@@ -189,7 +201,7 @@ namespace HotkeyApp
         private void Window_Drop(object sender, DragEventArgs e)
         {
             Pill.BorderBrush = new SolidColorBrush(Color.FromRgb(0x3A, 0xFF, 0xFF));
-            if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+            if (_shelfDragOut || !e.Data.GetDataPresent(DataFormats.FileDrop)) return;
 
             if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths ||
                 paths.Length == 0) return;
@@ -574,7 +586,12 @@ namespace HotkeyApp
 
         // ---------------- Полка: быстрый доступ к файлам острова ----------------
 
-        /// <summary>Последние 8 файлов из папки острова: клик — открыть, ✕ — удалить.</summary>
+        /// <summary>
+        /// Полка как папка Проводника: значки файлов с подписями.
+        /// Клик — открыть; перетаскивание значка — вытащить файл наружу
+        /// (на рабочий стол, в папку, в другое окно); правый клик — меню
+        /// «Открыть / Удалить». Показываются последние 8 файлов папки острова.
+        /// </summary>
         private void RefreshShelf()
         {
             ShelfList.Children.Clear();
@@ -594,55 +611,126 @@ namespace HotkeyApp
 
             ShelfPanel.Visibility = files.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             foreach (var f in files)
+                ShelfList.Children.Add(BuildShelfItem(f.FullName, f.Name));
+        }
+
+        /// <summary>Значок файла на полке (иконка как в Проводнике + имя).</summary>
+        private Border BuildShelfItem(string path, string name)
+        {
+            var item = new Border
             {
-                var path = f.FullName;
+                Width = 78,
+                Padding = new Thickness(2),
+                Margin = new Thickness(2),
+                CornerRadius = new CornerRadius(4),
+                Background = Brushes.Transparent,
+                ToolTip = path
+            };
 
-                var row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-                var open = new Button
+            var stack = new StackPanel();
+            var icon = GetFileIcon(path);
+            if (icon != null)
+                stack.Children.Add(new Image
                 {
-                    HorizontalContentAlignment = HorizontalAlignment.Left,
-                    FontSize = 11,
-                    Padding = new Thickness(6, 2, 6, 2),
-                    ToolTip = path,
-                    Content = new TextBlock
+                    Source = icon, Width = 40, Height = 40,
+                    HorizontalAlignment = HorizontalAlignment.Center
+                });
+            stack.Children.Add(new TextBlock
+            {
+                Text = name,
+                Foreground = Brushes.White,
+                FontSize = 10,
+                TextAlignment = TextAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxWidth = 70,
+                ToolTip = name
+            });
+            item.Child = stack;
+
+            // подсветка при наведении — как в Проводнике
+            item.MouseEnter += (_, _) =>
+                item.Background = new SolidColorBrush(Color.FromRgb(0x2A, 0xFF, 0xFF)) { Opacity = 0.16 };
+            item.MouseLeave += (_, _) => item.Background = Brushes.Transparent;
+
+            // контекстное меню — как в Проводнике
+            var menu = new ContextMenu();
+            var miOpen = new MenuItem { Header = "Открыть" };
+            miOpen.Click += (_, _) => OpenShelfFile(path);
+            var miDelete = new MenuItem { Header = "Удалить" };
+            miDelete.Click += (_, _) =>
+            {
+                try { File.Delete(path); } catch { }
+                RefreshShelf();
+            };
+            menu.Items.Add(miOpen);
+            menu.Items.Add(miDelete);
+            item.ContextMenu = menu;
+
+            // клик — открыть; перетаскивание — вытащить файл наружу (drag-out)
+            Point press = default;
+            bool dragging = false;
+            item.MouseLeftButtonDown += (_, e) =>
+            {
+                press = e.GetPosition(item);
+                dragging = false;
+                item.CaptureMouse();
+            };
+            item.MouseMove += (_, e) =>
+            {
+                if (dragging || e.LeftButton != MouseButtonState.Pressed) return;
+                var pos = e.GetPosition(item);
+                if (Math.Abs(pos.X - press.X) < 6 && Math.Abs(pos.Y - press.Y) < 6) return;
+
+                dragging = true;
+                item.ReleaseMouseCapture();
+                _shelfDragOut = true;
+                try
+                {
+                    // Move: если цель (Проводник/рабочий стол) выбрала перемещение —
+                    // удаляем копию из папки острова, как делает источник в OLE drag-drop
+                    var effect = DragDrop.DoDragDrop(item,
+                        new DataObject(DataFormats.FileDrop, new[] { path }),
+                        DragDropEffects.Copy | DragDropEffects.Move);
+                    if (effect == DragDropEffects.Move)
                     {
-                        Text = f.Name,
-                        TextTrimming = TextTrimming.CharacterEllipsis,
-                        MaxWidth = 300
+                        try { File.Delete(path); } catch { }
                     }
-                };
-                open.Click += (_, _) =>
-                {
-                    try
-                    {
-                        Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
-                    }
-                    catch (Exception ex)
-                    {
-                        StatusText.Text = "Не удалось открыть файл: " + ex.Message;
-                    }
-                };
+                }
+                catch { }
+                finally { _shelfDragOut = false; }
+                RefreshShelf();
+            };
+            item.MouseLeftButtonUp += (_, _) =>
+            {
+                item.ReleaseMouseCapture();
+                if (!dragging) OpenShelfFile(path);
+            };
 
-                var del = new Button
-                {
-                    Content = "✕", FontSize = 10,
-                    Padding = new Thickness(4, 0, 4, 0),
-                    ToolTip = "Удалить файл из папки острова"
-                };
-                del.Click += (_, _) =>
-                {
-                    try { File.Delete(path); } catch { }
-                    RefreshShelf();
-                };
+            return item;
+        }
 
-                Grid.SetColumn(open, 0);
-                Grid.SetColumn(del, 1);
-                row.Children.Add(open);
-                row.Children.Add(del);
-                ShelfList.Children.Add(row);
+        /// <summary>Иконка файла как в Проводнике (ассоциированная с расширением/файлом).</summary>
+        private static ImageSource? GetFileIcon(string path)
+        {
+            try
+            {
+                using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
+                if (icon == null) return null;
+                return Imaging.CreateBitmapSourceFromHIcon(
+                    icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+            }
+            catch { return null; }
+        }
+
+        private void OpenShelfFile(string path)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = "Не удалось открыть файл: " + ex.Message;
             }
         }
 

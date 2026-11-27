@@ -52,7 +52,7 @@
                                 ToolTip="Открыть папку с файлами"
                                 Click="OpenInboxButton_Click"/>
                     </Grid>
-                    <StackPanel x:Name="ShelfList" Margin="0,3,0,0"/>
+                    <WrapPanel x:Name="ShelfList" Margin="0,4,0,0" MaxWidth="430"/>
                 </StackPanel>
             </StackPanel>
         </StackPanel>
