@@ -1,7 +1,5 @@
-# Бэкенд ReportPalette: FastAPI + ядро ManagerDataBase.
-#
-# Перед сборкой клонируйте ядро рядом с main.py:
-#   git clone https://github.com/volnaogt-organization/ManagerDataBase backend/ManagerDataBase
+# Шлюз ReportPalette: FastAPI, без ядра ManagerDataBase внутри.
+# Ядро теперь отдельный модуль-контейнер (см. modules.json и docker-compose.yml).
 #
 # Сборка (из корня репозитория):  docker build -t reportpalette-backend ./backend
 
@@ -12,27 +10,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Сначала зависимости — для кэширования слоёв
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# pyodbc собирается из исходников: нужны gcc + unixodbc-dev.
-# msodbcsql18 — драйвер SQL Server для подключений ManagerDataBase.
-RUN apt-get update \
- && apt-get install -y --no-install-recommends curl gnupg gcc g++ unixodbc-dev \
- && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
-      | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
- && curl -fsSL https://packages.microsoft.com/config/debian/12/prod.list \
-      -o /etc/apt/sources.list.d/mssql-release.list \
- && apt-get update \
- && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
- && pip install --no-cache-dir -r requirements.txt \
- && apt-get purge -y gcc g++ \
- && apt-get autoremove -y \
- && rm -rf /var/lib/apt/lists/*
-
-# Код сервиса и ядро ManagerDataBase (клонируется заранее, см. выше)
 COPY main.py .
-COPY ManagerDataBase ./ManagerDataBase
+COPY modules.json .
 
 EXPOSE 8000
 

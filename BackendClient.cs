@@ -10,16 +10,21 @@ using System.Threading.Tasks;
 namespace HotkeyApp
 {
     /// <summary>
-    /// Клиент Python-бэкенда (FastAPI), оборачивающего репозиторий ManagerDataBase.
-    /// Бэкенд запускается отдельно: см. backend/README.md
+    /// Клиент локального сервиса модуля (FastAPI, 127.0.0.1).
+    /// Адрес модуля выдаёт ModuleManager — он же скачивает и запускает модуль.
     /// </summary>
     public class BackendClient : IDisposable
     {
-        private static readonly HttpClient Http = new HttpClient
+        private readonly HttpClient _http;
+
+        public BackendClient(string baseAddress)
         {
-            BaseAddress = new Uri("http://127.0.0.1:8000/"), // при необходимости замените на адрес сервера
-            Timeout = TimeSpan.FromMinutes(30)
-        };
+            _http = new HttpClient
+            {
+                BaseAddress = new Uri(baseAddress),
+                Timeout = TimeSpan.FromMinutes(30)
+            };
+        }
 
         public class RunRequest
         {
@@ -37,12 +42,12 @@ namespace HotkeyApp
             [JsonPropertyName("detail")] public string? Detail { get; set; }
         }
 
-        /// <summary>Проверить доступность бэкенда.</summary>
+        /// <summary>Проверить доступность сервиса модуля.</summary>
         public async Task<bool> IsAliveAsync(CancellationToken ct = default)
         {
             try
             {
-                var resp = await Http.GetAsync("health", ct);
+                var resp = await _http.GetAsync("health", ct);
                 return resp.IsSuccessStatusCode;
             }
             catch
@@ -52,7 +57,7 @@ namespace HotkeyApp
         }
 
         /// <summary>
-        /// Запустить обработку ДСЕ на бэкенде.
+        /// Запустить обработку ДСЕ модулем.
         /// program: 1010 или 2012; dse — список шифров ДСЕ.
         /// </summary>
         public async Task<RunResponse> RunAsync(int program, IEnumerable<string> dse,
@@ -66,18 +71,41 @@ namespace HotkeyApp
                 SaveInput = saveToExcel ? 1 : 0
             };
 
-            using var resp = await Http.PostAsJsonAsync("run", request, ct);
+            using var resp = await _http.PostAsJsonAsync("run", request, ct);
             var body = await resp.Content.ReadAsStringAsync(ct);
 
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             var result = JsonSerializer.Deserialize<RunResponse>(body, options) ?? new RunResponse();
 
             if (!resp.IsSuccessStatusCode)
-                throw new HttpRequestException(result.Detail ?? $"Бэкенд вернул {(int)resp.StatusCode}");
+                throw new HttpRequestException(result.Detail ?? $"Модуль вернул {(int)resp.StatusCode}");
 
             return result;
         }
 
-        public void Dispose() { }
+        /// <summary>
+        /// Произвольный POST к API модуля — выполнение команд из module.json.
+        /// Возвращает тело ответа; при ошибке бросает HttpRequestException с detail.
+        /// </summary>
+        public async Task<JsonElement> PostAsync(string endpoint, Dictionary<string, object?> payload,
+                                                 CancellationToken ct = default)
+        {
+            using var resp = await _http.PostAsJsonAsync(endpoint.TrimStart('/'), payload, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+
+            JsonElement json;
+            try { json = JsonDocument.Parse(body).RootElement.Clone(); }
+            catch { json = JsonDocument.Parse("{}").RootElement.Clone(); }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                string? detail = json.ValueKind == JsonValueKind.Object &&
+                                 json.TryGetProperty("detail", out var d) ? d.GetString() : null;
+                throw new HttpRequestException(detail ?? $"Модуль вернул {(int)resp.StatusCode}");
+            }
+            return json;
+        }
+
+        public void Dispose() => _http.Dispose();
     }
 }

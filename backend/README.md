@@ -1,77 +1,87 @@
-# Backend (Python) для ReportPalette / ManagerDataBase
+# Backend (шлюз) ReportPalette
 
-Это HTTP-сервис на **FastAPI**, который связывает клиенты ReportPalette
-(WPF-приложение и веб-палитру) с логикой из репозитория
-[ManagerDataBase](https://github.com/volnaogt-organization/ManagerDataBase).
+FastAPI-шлюз модульной системы ReportPalette. Ядро ManagerDataBase сюда
+**больше не клонируется** — каждый модуль (ManagerDataBase и будущие) работает
+отдельным docker-контейнером со своим HTTP API, а шлюз:
+
+- ведёт реестр модулей (`modules.json`);
+- проксирует запросы клиентов к модулям;
+- проверяет релизы модулей на GitHub и **обновляет контейнеры по кнопке из интерфейса**
+  (скачивает свежий образ из GHCR и пересоздаёт контейнер через Docker-сокет).
+
+```
+Клиент (WPF / веб) --HTTP--> Шлюз (main.py) --внутр. docker-сеть--> модуль (managerdatabase:8000)
+                                  |
+                                  +-- Docker socket: pull + recreate при обновлении
+```
 
 ## Запуск в Docker (рекомендуется)
 
 ```bash
 # из корня репозитория
-git clone https://github.com/volnaogt-organization/ManagerDataBase backend/ManagerDataBase
 docker compose up -d --build
 ```
 
-Образ включает все зависимости, включая ODBC Driver 18 for SQL Server
-(нужен pyodbc/sqlalchemy из ManagerDataBase).
+## Реестр модулей (`modules.json`)
 
-## Как это работает
-
+```json
+{
+  "modules": [
+    {
+      "name": "managerdatabase",              // уникальный идентификатор
+      "display_name": "ManagerDataBase",      // подпись в интерфейсе
+      "description": "…",
+      "repo": "volnaogt-organization/ManagerDataBase",          // откуда брать релизы
+      "image": "ghcr.io/volnaogt-organization/managerdatabase", // образ модуля
+      "container": "reportpalette-mdb",       // имя контейнера (container_name в compose)
+      "service": "managerdatabase",           // имя сервиса в docker-сети
+      "port": 8000,
+      "legacy_routes": ["/run", "/annual_plan"], // старые маршруты шлюза -> этот модуль
+      "enabled": true
+    }
+  ]
+}
 ```
-Клиент (WPF / веб)  --HTTP JSON-->  FastAPI (main.py)  --import-->  ManagerDataBase (scr/...)
-   BackendClient.cs / app.js          /run, /annual_plan             MainLogic.main(...)
-```
 
-Репозиторий ManagerDataBase склонирован в папку `ManagerDataBase/` рядом с `main.py`,
-и `main.py` добавляет его в `sys.path`, поэтому весь код (`scr.manager_database.MainLogic`
-и т.д.) доступен как обычная Python-модульная библиотека — без запуска консольного меню `cmd_body.py`.
+Файл смонтирован в контейнер шлюза (`./backend/modules.json:/app/modules.json:ro`),
+поэтому правки применяются без пересборки: `docker compose restart backend`.
+
+## Эндпоинты
+
+| Метод | Путь | Назначение |
+|-------|------|-----------|
+| GET  | `/health` | Статус шлюза и модулей |
+| GET  | `/modules` | Модули: версия работающая / последний релиз / есть ли обновление |
+| POST | `/modules/update` | Обновить все модули, для которых есть свежий релиз |
+| POST | `/modules/{name}/update` | Обновить конкретный модуль |
+| ANY  | `/modules/{name}/proxy/{path}` | Универсальный прокси к API модуля |
+| POST | `/run`, `/annual_plan` | Совместимость со старыми клиентами (прокси к модулю из `legacy_routes`) |
+
+Swagger: http://127.0.0.1:8000/docs
 
 ## Локальный запуск (без Docker)
 
 ```bash
 cd backend
-python -m venv venv
-# Windows:
-venv\Scripts\activate
-# Linux/macOS:
-source venv/bin/activate
-
+python -m venv venv && venv\Scripts\activate   # Windows
 pip install -r requirements.txt
-# зависимости самого ManagerDataBase (чтение/запись Excel, если ещё не стоят):
-pip install openpyxl
-
 uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-Интерактивная документация API: http://127.0.0.1:8000/docs
+Шлюз стартует и без Docker-сокета, но обновление модулей и точный статус
+контейнеров будут недоступны (прокси к модулям работает).
 
-## Эндпоинты
+Переменные окружения:
 
-| Метод | Путь           | Назначение                                                        |
-|-------|----------------|-------------------------------------------------------------------|
-| GET   | `/health`      | Проверка, что сервис жив и ядро ManagerDataBase импортировано     |
-| POST  | `/run`         | Обработка списка ДСЕ отчётом 1010 или 2012                        |
-| POST  | `/annual_plan` | Загрузка годового отчёта из Excel-файла                           |
+| Переменная | Назначение |
+|-----------|-----------|
+| `GITHUB_TOKEN` | Опционально. Токен для GitHub API (приватные репозитории, лимит 60→5000 запр/ч) |
+| `MODULES_FILE` | Путь к `modules.json` (по умолчанию рядом с `main.py`) |
 
-Пример запроса:
+## Как добавить новый модуль
 
-```bash
-curl -X POST http://127.0.0.1:8000/run \
-  -H "Content-Type: application/json" \
-  -d '{"program": 1010, "dse_list": ["ЛТИЯ.716713.001", "ЛТИЯ.712341.004"], "save_input": 1}'
-```
-
-## Обновление кода ManagerDataBase
-
-```bash
-cd backend/ManagerDataBase && git pull
-```
-
-(папка `ManagerDataBase/` — отдельный git-клон, в основной репозиторий она не входит)
-
-## Связь с WPF-клиентом
-
-На стороне клиента всё в `BackendClient.cs`: он шлёт запросы на
-`http://127.0.0.1:8000`. Если бэкенд работает на другой машине — поменяйте
-`BaseAddress` в `BackendClient.cs`. В `MainWindow.xaml.cs` по Enter в текстовом
-поле список ДСЕ (через `$`) отправляется в `POST /run`.
+1. В репозитории модуля: `Dockerfile` + `service/api.py` + `module.json` +
+   workflow релиза — готовый шаблон в `module-kit/managerdatabase/`.
+2. Здесь: сервис в `docker-compose.yml` (с явным `container_name`).
+3. Запись в `backend/modules.json` + `docker compose restart backend`.
+4. Первый релиз: `git tag v0.1.0 && git push origin v0.1.0` в репозитории модуля.

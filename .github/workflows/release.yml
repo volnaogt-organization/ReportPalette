@@ -1,0 +1,42 @@
+name: release
+
+# Релиз ReportPalette: пуш тега v* (например v0.2.0) собирает portable-пакет
+# (self-contained, .NET не нужен на целевой машине) и выкладывает его
+# zip-ассетом в GitHub Release. Палитра сама находит этот релиз и обновляется
+# (⚙ → Обновление программы).
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish self-contained package
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          dotnet publish HotkeyApp.csproj -c Release -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeAllContentForSelfExtract=true `
+            -p:Version=$version `
+            -o publish
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path publish\* -DestinationPath "ReportPalette-${{ github.ref_name }}-win-x64.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ReportPalette-${{ github.ref_name }}-win-x64.zip
+          generate_release_notes: true

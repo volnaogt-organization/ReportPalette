@@ -1,0 +1,17 @@
+# Dev-override: модуль managerdatabase собирается из локального клона
+# вместо готового релизного образа из GHCR.
+#
+# Подготовка (один раз):
+#   git clone https://github.com/volnaogt-organization/ManagerDataBase backend/ManagerDataBase
+#   (в клоне должны быть Dockerfile и service/api.py — см. module-kit/managerdatabase)
+#
+# Запуск:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+
+services:
+  managerdatabase:
+    build:
+      context: ./backend/ManagerDataBase
+      args:
+        MODULE_VERSION: dev
+    image: ghcr.io/volnaogt-organization/managerdatabase:dev
