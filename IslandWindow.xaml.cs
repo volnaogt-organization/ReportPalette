@@ -15,13 +15,15 @@ namespace HotkeyApp
     /// <summary>
     /// «Остров» — таблетка сверху экрана (идея в духе Dynamic Island):
     /// всегда на виду, принимает drag-and-drop файлов с рабочего стола
-    /// и из Проводника. Перенесённый файл сначала копируется в папку
-    /// пользователя (задаётся в настройках острова — кнопка ⚙ в раскрытой
-    /// таблетке), дальше: Excel с ДСЕ — выбор отчёта и столбца, прочие файлы —
-    /// команды модулей с вводом «путь к файлу», папка — выдача доступа
-    /// к директории. Прогресс и кнопка результата — в самой таблетке; через
-    /// несколько секунд простоя она сворачивается обратно. Перетаскивание
-    /// мышью двигает остров, позиция запоминается.
+    /// и из Проводника. Локальный файл копируется в папку острова (задаётся
+    /// в ⚙ настройках острова), сетевой (UNC/сетевой диск) — только после
+    /// вопроса: копия или ярлык. Сохранённые файлы лежат на «полке» в раскрытой
+    /// таблетке — открыть или удалить в один клик. Дальше по типу файла:
+    /// Excel с ДСЕ — выбор отчёта и столбца, прочие — команды модулей с вводом
+    /// «путь к файлу», папка — выдача доступа к директории. Прогресс и кнопка
+    /// результата — в самой таблетке; через несколько секунд простоя она
+    /// сворачивается обратно. Перетаскивание мышью двигает остров,
+    /// позиция запоминается.
     /// </summary>
     public partial class IslandWindow : Window
     {
@@ -131,6 +133,7 @@ namespace HotkeyApp
         {
             ExpandedPanel.Visibility = Visibility.Collapsed;
             ActionPanel.Children.Clear();
+            ShelfList.Children.Clear();
         }
 
         private void ScheduleCollapse()
@@ -150,6 +153,7 @@ namespace HotkeyApp
             OpenResultButton.Visibility = _lastResultFile != null ? Visibility.Visible : Visibility.Collapsed;
             Expand("Перетащите на остров Excel-файл с ДСЕ — выберите отчёт.\n" +
                    "Файл сначала копируется в папку из ⚙ настроек острова.");
+            RefreshShelf();
             ScheduleCollapse();
         }
 
@@ -200,6 +204,19 @@ namespace HotkeyApp
             var dropped = paths[0];
             if (!File.Exists(dropped)) return;
 
+            // Сетевые файлы молча не копируем: спрашиваем — копия или ярлык
+            if (IsNetworkPath(dropped))
+            {
+                var choice = AskNetworkChoice(dropped);
+                if (choice == null) { Collapse(); return; }
+                if (choice == false)
+                {
+                    CreateInboxShortcut(dropped);
+                    return;
+                }
+                // true — копируем и дальше обычным путём
+            }
+
             // В первую очередь сохраняем файл в папку пользователя
             // (задаётся в настройках острова, кнопка ⚙ в раскрытой таблетке)
             string file;
@@ -210,6 +227,7 @@ namespace HotkeyApp
                 ScheduleCollapse();
                 return;
             }
+            RefreshShelf();
 
             var ext = Path.GetExtension(file).ToLowerInvariant();
             bool isExcel = ext is ".xlsx" or ".xls" or ".xlsm" or ".xlsb";
@@ -447,6 +465,199 @@ namespace HotkeyApp
             }
             File.Copy(file, dest);
             return dest;
+        }
+
+        // ---------------- Сетевые файлы: копия или ярлык ----------------
+
+        /// <summary>Сетевой путь: UNC (\\server\share) или подключённый сетевой диск.</summary>
+        private static bool IsNetworkPath(string path)
+        {
+            try
+            {
+                var full = Path.GetFullPath(path);
+                if (full.StartsWith(@"\\", StringComparison.Ordinal)) return true;
+                var root = Path.GetPathRoot(full);
+                if (string.IsNullOrEmpty(root)) return false;
+                return new DriveInfo(root).DriveType == DriveType.Network;
+            }
+            catch { return false; } // не смогли определить — считаем локальным
+        }
+
+        /// <summary>Сетевой файл: true — копировать, false — ярлык, null — отмена.</summary>
+        private bool? AskNetworkChoice(string file)
+        {
+            bool? result = null;
+
+            var panel = new StackPanel { Margin = new Thickness(12) };
+            panel.Children.Add(new TextBlock
+            {
+                Text = $"Файл из сетевой папки:\n{file}\n\n" +
+                       "Скопировать его в папку острова или оставить на месте и создать ярлык?",
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 420
+            });
+
+            var win = new Window
+            {
+                Title = "Сетевой файл",
+                Content = panel,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                ResizeMode = ResizeMode.NoResize,
+                Topmost = true
+            };
+
+            var copy = new Button
+            {
+                Content = "Копировать", IsDefault = true,
+                MinWidth = 100, Margin = new Thickness(0, 0, 6, 0)
+            };
+            copy.Click += (_, _) => { result = true; win.DialogResult = true; };
+            var link = new Button
+            {
+                Content = "Создать ярлык",
+                MinWidth = 100, Margin = new Thickness(0, 0, 6, 0)
+            };
+            link.Click += (_, _) => { result = false; win.DialogResult = true; };
+
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+            buttons.Children.Add(copy);
+            buttons.Children.Add(link);
+            buttons.Children.Add(new Button { Content = "Отмена", IsCancel = true, MinWidth = 70 });
+            panel.Children.Add(buttons);
+
+            win.ShowDialog();
+            return result;
+        }
+
+        /// <summary>Ярлык (.lnk) в папке острова на сетевой файл — файл остаётся на месте.</summary>
+        private void CreateInboxShortcut(string target)
+        {
+            try
+            {
+                var dir = CurrentInboxDir();
+                Directory.CreateDirectory(dir);
+
+                var dest = Path.Combine(dir, Path.GetFileName(target) + ".lnk");
+                if (File.Exists(dest))
+                {
+                    var name = Path.GetFileName(target);
+                    int i = 1;
+                    do { dest = Path.Combine(dir, $"{name} ({i++}).lnk"); }
+                    while (File.Exists(dest));
+                }
+
+                // WScript.Shell через COM — без дополнительных зависимостей
+                var shellType = Type.GetTypeFromProgID("WScript.Shell")
+                    ?? throw new InvalidOperationException("WScript.Shell недоступен");
+                dynamic shell = Activator.CreateInstance(shellType)!;
+                dynamic shortcut = shell.CreateShortcut(dest);
+                shortcut.TargetPath = target;
+                shortcut.WorkingDirectory = Path.GetDirectoryName(target) ?? "";
+                shortcut.Save();
+
+                Expand($"Ярлык создан:\n{dest}\n\nФайл остался в сетевой папке.");
+            }
+            catch (Exception ex)
+            {
+                Expand($"Не удалось создать ярлык:\n{ex.Message}");
+            }
+            RefreshShelf();
+            ScheduleCollapse();
+        }
+
+        // ---------------- Полка: быстрый доступ к файлам острова ----------------
+
+        /// <summary>Последние 8 файлов из папки острова: клик — открыть, ✕ — удалить.</summary>
+        private void RefreshShelf()
+        {
+            ShelfList.Children.Clear();
+
+            List<FileInfo> files;
+            try
+            {
+                var dir = CurrentInboxDir();
+                files = Directory.Exists(dir)
+                    ? new DirectoryInfo(dir).GetFiles()
+                          .OrderByDescending(f => f.LastWriteTime)
+                          .Take(8)
+                          .ToList()
+                    : new List<FileInfo>();
+            }
+            catch { files = new List<FileInfo>(); }
+
+            ShelfPanel.Visibility = files.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            foreach (var f in files)
+            {
+                var path = f.FullName;
+
+                var row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var open = new Button
+                {
+                    HorizontalContentAlignment = HorizontalAlignment.Left,
+                    FontSize = 11,
+                    Padding = new Thickness(6, 2, 6, 2),
+                    ToolTip = path,
+                    Content = new TextBlock
+                    {
+                        Text = f.Name,
+                        TextTrimming = TextTrimming.CharacterEllipsis,
+                        MaxWidth = 300
+                    }
+                };
+                open.Click += (_, _) =>
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+                    }
+                    catch (Exception ex)
+                    {
+                        StatusText.Text = "Не удалось открыть файл: " + ex.Message;
+                    }
+                };
+
+                var del = new Button
+                {
+                    Content = "✕", FontSize = 10,
+                    Padding = new Thickness(4, 0, 4, 0),
+                    ToolTip = "Удалить файл из папки острова"
+                };
+                del.Click += (_, _) =>
+                {
+                    try { File.Delete(path); } catch { }
+                    RefreshShelf();
+                };
+
+                Grid.SetColumn(open, 0);
+                Grid.SetColumn(del, 1);
+                row.Children.Add(open);
+                row.Children.Add(del);
+                ShelfList.Children.Add(row);
+            }
+        }
+
+        private void OpenInboxButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var dir = CurrentInboxDir();
+                Directory.CreateDirectory(dir);
+                Process.Start(new ProcessStartInfo { FileName = dir, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = "Не удалось открыть папку: " + ex.Message;
+            }
         }
 
         // ---------------- Настройки острова ----------------

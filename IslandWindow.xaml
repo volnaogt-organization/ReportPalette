@@ -41,6 +41,19 @@
                         FontSize="11" Padding="8,3" Margin="0,8,0,0"
                         HorizontalAlignment="Left"
                         Visibility="Collapsed" Click="OpenResultButton_Click"/>
+
+                <!-- Полка: быстрый доступ к файлам, сохранённым островом -->
+                <StackPanel x:Name="ShelfPanel" Margin="0,8,0,0" Visibility="Collapsed">
+                    <Grid>
+                        <TextBlock Text="Файлы острова" Foreground="#80FFFFFF" FontSize="11"
+                                   VerticalAlignment="Center"/>
+                        <Button Content="📂" FontSize="10" Padding="4,0"
+                                HorizontalAlignment="Right"
+                                ToolTip="Открыть папку с файлами"
+                                Click="OpenInboxButton_Click"/>
+                    </Grid>
+                    <StackPanel x:Name="ShelfList" Margin="0,3,0,0"/>
+                </StackPanel>
             </StackPanel>
         </StackPanel>
     </Border>
