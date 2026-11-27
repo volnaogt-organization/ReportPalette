@@ -89,6 +89,10 @@ namespace HotkeyApp
         [JsonPropertyName("islandLeft")] public double? IslandLeft { get; set; }
         [JsonPropertyName("islandTop")] public double? IslandTop { get; set; }
 
+        /// <summary>Папка, куда остров сохраняет перенесённые файлы
+        /// (пусто — %LOCALAPPDATA%\ReportPalette\inbox).</summary>
+        [JsonPropertyName("islandInboxDir")] public string IslandInboxDir { get; set; } = "";
+
         /// <summary>Версия схемы конфига. Отсутствие поля при загрузке = v1.</summary>
         [JsonPropertyName("version")] public int Version { get; set; } = 2;
         [JsonPropertyName("backendUrl")] public string BackendUrl { get; set; } = "http://127.0.0.1:8000/";

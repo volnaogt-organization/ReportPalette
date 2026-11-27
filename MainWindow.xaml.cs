@@ -283,7 +283,7 @@ namespace HotkeyApp
             if (_settings.IslandEnabled)
             {
                 if (_island == null || !_island.IsLoaded)
-                    _island = new IslandWindow(this);
+                    _island = new IslandWindow();
                 if (!_island.IsVisible)
                     _island.Show();
             }

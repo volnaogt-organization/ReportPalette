@@ -15,18 +15,17 @@ namespace HotkeyApp
     /// <summary>
     /// «Остров» — таблетка сверху экрана (идея в духе Dynamic Island):
     /// всегда на виду, принимает drag-and-drop файлов с рабочего стола
-    /// и из Проводника. Excel с ДСЕ — выбор отчёта и столбца прямо из таблетки,
-    /// прочие файлы — команды модулей с вводом «путь к файлу», папка —
-    /// выдача доступа к директории. Прогресс и кнопка результата — в самой
-    /// таблетке; через несколько секунд простоя она сворачивается обратно.
-    /// Клик по таблетке — кнопки палитры и настроек; перетаскивание мышью
-    /// двигает остров, позиция запоминается.
+    /// и из Проводника. Перенесённый файл сначала копируется в папку
+    /// пользователя (задаётся в настройках острова — кнопка ⚙ в раскрытой
+    /// таблетке), дальше: Excel с ДСЕ — выбор отчёта и столбца, прочие файлы —
+    /// команды модулей с вводом «путь к файлу», папка — выдача доступа
+    /// к директории. Прогресс и кнопка результата — в самой таблетке; через
+    /// несколько секунд простоя она сворачивается обратно. Перетаскивание
+    /// мышью двигает остров, позиция запоминается.
     /// </summary>
     public partial class IslandWindow : Window
     {
-        private readonly MainWindow _palette;
         private AppSettings _settings = SettingsService.Load();
-
         private List<ModuleCommand> _commands = new();
         private readonly Dictionary<string, BackendClient> _clients = new();
 
@@ -40,9 +39,8 @@ namespace HotkeyApp
         private bool _dragMoved;
         private bool _userPositioned; // есть сохранённая позиция — не центрируем
 
-        public IslandWindow(MainWindow palette)
+        public IslandWindow()
         {
-            _palette = palette;
             InitializeComponent();
             RefreshCommands();
 
@@ -151,7 +149,7 @@ namespace HotkeyApp
             ActionPanel.Children.Clear();
             OpenResultButton.Visibility = _lastResultFile != null ? Visibility.Visible : Visibility.Collapsed;
             Expand("Перетащите на остров Excel-файл с ДСЕ — выберите отчёт.\n" +
-                   "Перенос папки выдаёт доступ к директории.");
+                   "Файл сначала копируется в папку из ⚙ настроек острова.");
             ScheduleCollapse();
         }
 
@@ -199,8 +197,19 @@ namespace HotkeyApp
                 return;
             }
 
-            var file = paths[0];
-            if (!File.Exists(file)) return;
+            var dropped = paths[0];
+            if (!File.Exists(dropped)) return;
+
+            // В первую очередь сохраняем файл в папку пользователя
+            // (задаётся в настройках острова, кнопка ⚙ в раскрытой таблетке)
+            string file;
+            try { file = CopyToInbox(dropped); }
+            catch (Exception ex)
+            {
+                Expand($"Не удалось сохранить файл:\n{ex.Message}");
+                ScheduleCollapse();
+                return;
+            }
 
             var ext = Path.GetExtension(file).ToLowerInvariant();
             bool isExcel = ext is ".xlsx" or ".xls" or ".xlsm" or ".xlsb";
@@ -211,7 +220,7 @@ namespace HotkeyApp
 
             if (matches.Count == 0)
             {
-                Expand($"Для файла {Path.GetFileName(file)} нет подходящей команды.\n" +
+                Expand($"Файл сохранён:\n{file}\n\nДля него нет подходящей команды.\n" +
                        (isExcel
                            ? "Ни один модуль не объявил команду «столбец из Excel»."
                            : "Ни один модуль не объявил команду с вводом «путь к файлу»."));
@@ -244,7 +253,7 @@ namespace HotkeyApp
                 };
                 ActionPanel.Children.Add(btn);
             }
-            Expand($"Что сделать с файлом {Path.GetFileName(file)}?");
+            Expand($"Файл сохранён:\n{file}\n\nЧто сделать с ним?");
         }
 
         /// <summary>Перенос папки: подтверждение и сохранение доступа к директории.</summary>
@@ -404,18 +413,115 @@ namespace HotkeyApp
             return "готово";
         }
 
-        // ---------------- Кнопки палитры и настроек ----------------
+        // ---------------- Папка для перенесённых файлов ----------------
 
-        private void PaletteButton_Click(object sender, RoutedEventArgs e)
+        /// <summary>Папка, куда копируются перенесённые на остров файлы
+        /// (читаем свежую с диска — могли изменить в диалоге настроек острова).</summary>
+        private string CurrentInboxDir()
         {
-            Collapse();
-            _palette.ShowPalette();
+            var dir = SettingsService.Load().IslandInboxDir;
+            return string.IsNullOrWhiteSpace(dir)
+                ? Path.Combine(ModuleManager.RootDir, "inbox")
+                : dir;
         }
 
-        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        /// <summary>Копирует перенесённый файл в папку пользователя; при совпадении
+        /// имени добавляет суффикс (1), (2)… Файл уже в этой папке — берётся как есть.</summary>
+        private string CopyToInbox(string file)
         {
-            Collapse();
-            _palette.OpenSettings();
+            var dir = CurrentInboxDir();
+            if (string.Equals(Path.GetDirectoryName(Path.GetFullPath(file)),
+                              Path.GetFullPath(dir.TrimEnd('\\', '/')),
+                              StringComparison.OrdinalIgnoreCase))
+                return file;
+
+            Directory.CreateDirectory(dir);
+            var dest = Path.Combine(dir, Path.GetFileName(file));
+            if (File.Exists(dest))
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                var ext = Path.GetExtension(file);
+                int i = 1;
+                do { dest = Path.Combine(dir, $"{name} ({i++}){ext}"); }
+                while (File.Exists(dest));
+            }
+            File.Copy(file, dest);
+            return dest;
+        }
+
+        // ---------------- Настройки острова ----------------
+
+        private void IslandSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            _collapseTimer.Stop(); // не сворачиваться, пока открыт диалог
+
+            var panel = new StackPanel { Margin = new Thickness(12) };
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Папка для перенесённых на остров файлов:",
+                Margin = new Thickness(0, 0, 0, 5)
+            });
+
+            var tb = new TextBox { Text = CurrentInboxDir(), MinWidth = 340 };
+            var browse = new Button { Content = "Обзор…", Margin = new Thickness(6, 0, 0, 0) };
+            var row = new DockPanel();
+            DockPanel.SetDock(browse, Dock.Right);
+            row.Children.Add(browse);
+            row.Children.Add(tb);
+            panel.Children.Add(row);
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Файл, перенесённый на остров, сначала копируется сюда,\n" +
+                       "отчёт строится уже по копии.",
+                Foreground = Brushes.Gray,
+                FontSize = 11,
+                Margin = new Thickness(0, 6, 0, 0)
+            });
+
+            var win = new Window
+            {
+                Title = "Настройки острова",
+                Content = panel,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                ResizeMode = ResizeMode.NoResize,
+                Topmost = true
+            };
+
+            browse.Click += (_, _) =>
+            {
+                using var dlg = new System.Windows.Forms.FolderBrowserDialog
+                {
+                    SelectedPath = tb.Text,
+                    Description = "Папка для перенесённых файлов"
+                };
+                if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    tb.Text = dlg.SelectedPath;
+            };
+
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+            var ok = new Button
+            {
+                Content = "Сохранить", IsDefault = true,
+                MinWidth = 80, Margin = new Thickness(0, 0, 8, 0)
+            };
+            ok.Click += (_, _) => { win.DialogResult = true; };
+            buttons.Children.Add(ok);
+            buttons.Children.Add(new Button { Content = "Отмена", IsCancel = true, MinWidth = 80 });
+            panel.Children.Add(buttons);
+
+            if (win.ShowDialog() == true)
+            {
+                SaveIslandSettings(s => s.IslandInboxDir = tb.Text.Trim());
+                Expand($"Папка для перенесённых файлов:\n{CurrentInboxDir()}");
+            }
+            ScheduleCollapse();
         }
     }
 }
